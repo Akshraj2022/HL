@@ -598,7 +598,16 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const preloader = document.getElementById('preloader');
-            window.addEventListener('load', () => preloader.classList.add('fade-out')); setTimeout(() => { if(preloader) preloader.classList.add('fade-out'); }, 2000);
+            // Explicitly wait for background image
+            const hidePreloader = () => {
+                const p = document.getElementById('preloader');
+                if(p) { p.classList.add('fade-out'); p.classList.add('hidden'); }
+            };
+            const bgImg = new Image();
+            bgImg.src = 'bg8.png';
+            bgImg.onload = hidePreloader;
+            bgImg.onerror = hidePreloader;
+            setTimeout(hidePreloader, 4000);
 
             // --- Authentication & Session Limits Check ---
             const urlParams = new URLSearchParams(window.location.search);

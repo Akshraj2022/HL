@@ -396,12 +396,16 @@
 
     <script>
         // --- Preloader Removal ---
-        const hidePreloader = () => {
-            const preloader = document.getElementById('preloader');
-            if(preloader) preloader.classList.add('fade-out');
-        };
-        window.addEventListener('load', hidePreloader);
-        setTimeout(hidePreloader, 2000); // Fallback if load event hangs
+        // Explicitly wait for background image
+            const hidePreloader = () => {
+                const p = document.getElementById('preloader');
+                if(p) { p.classList.add('fade-out'); p.classList.add('hidden'); }
+            };
+            const bgImg = new Image();
+            bgImg.src = 'bg1.png';
+            bgImg.onload = hidePreloader;
+            bgImg.onerror = hidePreloader;
+            setTimeout(hidePreloader, 4000); // Fallback if load event hangs
 
         // --- Firebase Config ---
         const firebaseConfig = {

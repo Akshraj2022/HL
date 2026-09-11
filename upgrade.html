@@ -247,9 +247,16 @@
 
     <script>
         // --- Preloader Removal ---
-        window.addEventListener('load', () => {
-            const preloader = document.getElementById('preloader');
-            if(preloader) {
+        // Explicitly wait for background image
+            const hidePreloader = () => {
+                const p = document.getElementById('preloader');
+                if(p) { p.classList.add('fade-out'); p.classList.add('hidden'); }
+            };
+            const bgImg = new Image();
+            bgImg.src = 'bg1.png';
+            bgImg.onload = hidePreloader;
+            bgImg.onerror = hidePreloader;
+            setTimeout(hidePreloader, 4000);if(preloader) {
                 preloader.classList.add('fade-out');
             }
         });
