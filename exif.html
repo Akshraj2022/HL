@@ -297,12 +297,6 @@
             
             
             
-            <!-- Native Banner Container -->
-            <div id="container-2ba1c9016f96b1de6d694f4502c2acba" style="margin: 15px auto; text-align: center; display: flex; justify-content: center;"></div>
-
-            <!-- Ad Container -->
-            <div id="ad-container-top" style="min-height: 90px; margin: 15px auto; width: 100%; max-width: 728px; text-align: center; display: flex; justify-content: center; align-items: center; z-index: 10;"></div>
-
             <div id="view-upload" class="view-state active">
                 <div class="drop-zone" id="drop-zone">
                     <svg class="drop-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
@@ -547,34 +541,6 @@
                         const data = doc.data();
                         userPlan = (data.plan || 'free').toLowerCase();
 
-                        if (userPlan === 'free' && !window._adsterraInjected) {
-                            window._adsterraInjected = true;
-                            // Additional Adsterra Ads
-                            if (!window._extraAdsInjected) {
-                                window._extraAdsInjected = true;
-                                try {
-                                    const nat = document.createElement('script');
-                                    nat.async = true;
-                                    nat.setAttribute('data-cfasync', 'false');
-                                    nat.src = "https://pl31295625.profitableratecpmnetwork.com/2ba1c9016f96b1de6d694f4502c2acba/invoke.js";
-                                    document.body.appendChild(nat);
-                                    
-                                    } catch(e) {
-                                    console.warn("Failed to load additional ads", e);
-                                }
-                            }
-
-                            try {
-                                const adScript = document.createElement('script');
-                                adScript.src = "https://www.profitableratecpmnetwork.com/qyxu8icy?key=6223f4d35e0dcf2d19f549cb2f916281";
-                                adScript.async = true;
-                                adScript.defer = true;
-                                adScript.onerror = function() { console.warn("Ad blocked or failed to load"); };
-                                document.body.appendChild(adScript);
-                            } catch (e) {
-                                console.warn("Failed to inject ad script", e);
-                            }
-                        }
 
                         totalSyncedUsage = data.dailyUsage || 0;
                         checkLimits();

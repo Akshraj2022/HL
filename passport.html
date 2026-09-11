@@ -274,12 +274,6 @@
             
             
             
-            <!-- Native Banner Container -->
-            <div id="container-2ba1c9016f96b1de6d694f4502c2acba" style="margin: 15px auto; text-align: center; display: flex; justify-content: center;"></div>
-
-            <!-- Ad Container -->
-            <div id="ad-container-top" style="min-height: 90px; margin: 15px auto; width: 100%; max-width: 728px; text-align: center; display: flex; justify-content: center; align-items: center; z-index: 10;"></div>
-
             <div id="view-upload" class="view-state active">
                 <div class="drop-zone" id="drop-zone">
                     <svg class="drop-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm5 12H7v-1.5c0-2.33 4.67-3.5 7-3.5s7 1.17 7 3.5V18z"/></svg>
@@ -544,34 +538,6 @@
                         const data = doc.data();
                         userPlan = (data.plan || 'free').toLowerCase();
 
-                        if (userPlan === 'free' && !window._adsterraInjected) {
-                            window._adsterraInjected = true;
-                            // Additional Adsterra Ads
-                            if (!window._extraAdsInjected) {
-                                window._extraAdsInjected = true;
-                                try {
-                                    const nat = document.createElement('script');
-                                    nat.async = true;
-                                    nat.setAttribute('data-cfasync', 'false');
-                                    nat.src = "https://pl31295625.profitableratecpmnetwork.com/2ba1c9016f96b1de6d694f4502c2acba/invoke.js";
-                                    document.body.appendChild(nat);
-                                    
-                                    } catch(e) {
-                                    console.warn("Failed to load additional ads", e);
-                                }
-                            }
-
-                            try {
-                                const adScript = document.createElement('script');
-                                adScript.src = "https://www.profitableratecpmnetwork.com/qyxu8icy?key=6223f4d35e0dcf2d19f549cb2f916281";
-                                adScript.async = true;
-                                adScript.defer = true;
-                                adScript.onerror = function() { console.warn("Ad blocked or failed to load"); };
-                                document.body.appendChild(adScript);
-                            } catch (e) {
-                                console.warn("Failed to inject ad script", e);
-                            }
-                        }
 
                         totalSyncedUsage = data.dailyUsage || 0;
                         checkLimits();
