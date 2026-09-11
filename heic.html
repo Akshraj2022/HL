@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HEIC/RAW Converter - Hikaru Labs</title>
+    <meta name="google-adsense-account" content="ca-pub-2865389325309773">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #050505;
+            --glass-bg: rgba(15, 15, 17, 0.4);
+            --glass-border: rgba(191, 161, 95, 0.15); 
+            --glass-hover: rgba(191, 161, 95, 0.08);
+            --accent: #bfa15f;
+            --accent-hover: #d4b472;
+            --accent-glow: rgba(191, 161, 95, 0.3);
+            --safe: #4ade80;
+            --error: #ef4444;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+
+        body, html {
+            background: url('background67.jpg') no-repeat center center fixed;
+            background-size: cover;
+            background-color: var(--bg-dark); 
+            color: var(--text-main);
+            min-height: 100vh; overflow-x: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(10, 10, 12, 0.75); z-index: -2; pointer-events: none;
+        }
+
+        #star-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
+
+        /* Navbar */
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.2rem 4%; background: rgba(5, 5, 5, 0.6);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 4px 40px rgba(0, 0, 0, 0.8), 0 1px 15px rgba(191, 161, 95, 0.1);
+            border-bottom: 1px solid var(--glass-border);
+            animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        header::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.8; box-shadow: 0 0 10px var(--accent);
+        }
+
+        .logo-container { display: flex; align-items: center; gap: 12px; text-decoration: none; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .logo-container:hover { transform: scale(1.03); }
+        .brand-logo { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--accent); object-fit: cover; box-shadow: 0 0 15px var(--accent-glow), inset 0 0 8px rgba(0,0,0,0.8); background-color: #000; }
+        .logo-text { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-main); }
+        .logo-text span { color: var(--accent); }
+
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .back-btn {
+            background: transparent; border: 1px solid var(--glass-border);
+            color: var(--text-main); padding: 0.5rem 1.2rem; border-radius: 20px;
+            font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none; display: flex; align-items: center; gap: 6px;
+        }
+        .back-btn:hover { background: var(--glass-hover); border-color: rgba(191,161,95,0.4); transform: translateX(-4px); box-shadow: 0 0 15px rgba(191,161,95,0.1); }
+
+        /* Main Tool UI */
+        .tool-container { max-width: 1200px; margin: 4rem auto; padding: 0 2rem; display: flex; flex-direction: column; align-items: center; flex: 1; }
+
+        .tool-header { text-align: center; margin-bottom: 2.5rem; animation: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        .tool-header h1 { font-size: 3.2rem; font-weight: 700; letter-spacing: -0.04em; margin-bottom: 0.8rem; text-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .tool-header p { font-size: 1.15rem; color: var(--text-muted); font-weight: 400; max-width: 650px; margin: 0 auto; line-height: 1.6; }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.97) translateY(15px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        .action-card {
+            background: var(--glass-bg); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border); border-radius: 32px; width: 100%; padding: 3rem;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .view-state { display: none; flex-direction: column; align-items: center; width: 100%; }
+        .view-state.active { display: flex; animation: fastScaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        @keyframes fastScaleIn { 0% { opacity: 0; transform: scale(0.98) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+
+        /* Upload View */
+        .drop-zone {
+            background: linear-gradient(145deg, rgba(20,20,22,0.4), rgba(5,5,7,0.6));
+            border: 1px solid var(--glass-border); border-radius: 20px;
+            width: 100%; height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1rem;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; position: relative; overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5); max-width: 800px; margin: 0 auto;
+        }
+        .drop-zone::before { content: ''; position: absolute; inset: 0; border: 2px dashed rgba(191, 161, 95, 0.2); border-radius: 20px; pointer-events: none; transition: border-color 0.3s ease; }
+        .drop-zone.dragover { background: linear-gradient(145deg, rgba(30,25,20,0.6), rgba(15,12,10,0.8)); animation: pulseGlow 1.5s infinite alternate; transform: scale(1.01); }
+        .drop-zone.dragover::before { border-color: var(--accent); }
+        @keyframes pulseGlow { from { box-shadow: inset 0 0 20px rgba(191, 161, 95, 0.1), 0 0 20px var(--accent-glow); } to { box-shadow: inset 0 0 50px rgba(191, 161, 95, 0.2), 0 0 40px rgba(191, 161, 95, 0.4); } }
+        
+        .drop-icon { width: 72px; height: 72px; color: var(--accent); filter: drop-shadow(0 0 10px rgba(191,161,95,0.4)); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .drop-zone:hover .drop-icon { transform: translateY(-8px) scale(1.1); filter: drop-shadow(0 5px 15px rgba(191,161,95,0.6)); }
+        .drop-zone h3 { font-size: 1.5rem; font-weight: 600; color: #fff; pointer-events: none; margin-top: 0.5rem; }
+        .drop-zone p { font-size: 0.95rem; color: var(--text-muted); pointer-events: none; margin-bottom: 1rem; }
+
+        /* Interactive Editor View */
+        .editor-layout { display: flex; gap: 2.5rem; width: 100%; align-items: stretch; }
+        
+        .preview-wrapper {
+            flex: 1; background: rgba(0,0,0,0.6); border-radius: 20px; 
+            border: 1px solid var(--glass-border); overflow: hidden;
+            display: flex; flex-direction: column;
+            height: 550px; box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+        }
+
+        .preview-header {
+            padding: 1rem 1.5rem; background: rgba(0,0,0,0.4); border-bottom: 1px solid var(--glass-border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .preview-header h4 { font-size: 0.9rem; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.05em; margin: 0; }
+        .preview-header span { font-size: 0.8rem; color: var(--text-muted); }
+
+        .file-list {
+            flex: 1; overflow-y: auto; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;
+            content-visibility: auto; /* Extreme performance boost for massive lists */
+        }
+        .file-list::-webkit-scrollbar { width: 8px; }
+        .file-list::-webkit-scrollbar-track { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        .file-list::-webkit-scrollbar-thumb { background: rgba(191,161,95,0.3); border-radius: 4px; }
+
+        .file-item {
+            display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1rem;
+            background: rgba(20,20,22,0.4); border: 1px solid rgba(255,255,255,0.03); border-radius: 12px;
+            transition: background 0.2s;
+        }
+        .file-item:hover { background: rgba(191,161,95,0.05); border-color: rgba(191,161,95,0.2); }
+        
+        /* Ultra-light CSS badges replace heavy DOM image previews */
+        .file-badge { 
+            width: 44px; height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, rgba(191,161,95,0.2), rgba(0,0,0,0.8));
+            border: 1px solid var(--accent); color: var(--accent); font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .file-details { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+        .old-name { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .new-name-container { display: flex; align-items: center; gap: 0.5rem; }
+        .new-name { font-size: 1rem; font-weight: 600; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        /* Sidebar Controls */
+        .controls-sidebar {
+            width: 380px; display: flex; flex-direction: column; gap: 1.5rem;
+            background: rgba(0,0,0,0.3); padding: 1.8rem; border-radius: 20px; border: 1px solid var(--glass-border);
+            height: 550px; overflow-y: auto;
+        }
+        .controls-sidebar::-webkit-scrollbar { display: none; }
+
+        .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .control-label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.3rem;}
+
+        .flat-select {
+            background: rgba(0,0,0,0.6); border: 1px solid var(--glass-border); 
+            border-radius: 12px; color: var(--text-main); padding: 0.9rem 1rem; 
+            font-size: 1rem; outline: none; transition: all 0.2s; width: 100%;
+            appearance: none; cursor: pointer;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23bfa15f%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); 
+            background-repeat: no-repeat; background-position: right 1rem top 50%; background-size: 0.65rem auto;
+        }
+        .flat-select:focus { border-color: var(--accent); box-shadow: 0 0 15px rgba(191,161,95,0.15); }
+        .flat-select option { background: var(--bg-dark); color: var(--text-main); }
+
+        /* Sliders */
+        .slider-row { display: flex; flex-direction: column; gap: 0.4rem; transition: opacity 0.3s; }
+        .slider-row.disabled { opacity: 0.3; pointer-events: none; }
+        .slider-header { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-main); font-weight: 500; }
+        .slider-header span.val { color: var(--accent); font-family: monospace; font-weight: 600; }
+        
+        input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; padding: 10px 0; }
+        input[type=range]::-webkit-slider-thumb { 
+            -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; 
+            background: var(--accent); cursor: pointer; margin-top: -7px; 
+            box-shadow: 0 0 12px var(--accent); transition: transform 0.15s; 
+        }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+        /* Buttons */
+        .primary-btn {
+            background: linear-gradient(135deg, #2a2a2d 0%, #1a1a1c 100%); border: 1px solid rgba(191, 161, 95, 0.4); color: var(--accent);
+            padding: 1rem 2.5rem; border-radius: 30px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4), 0 0 15px rgba(191, 161, 95, 0.15); width: 100%;
+        }
+        .primary-btn:hover { background: linear-gradient(135deg, #323236 0%, #222225 100%); border-color: var(--accent); box-shadow: 0 10px 25px rgba(0,0,0,0.5), 0 0 30px rgba(191, 161, 95, 0.4); transform: translateY(-3px) scale(1.02); }
+        .primary-btn:active { transform: scale(0.97); }
+        .primary-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .secondary-btn {
+            background: transparent; border: 1px solid var(--glass-border); color: var(--text-main);
+            padding: 1rem 2.5rem; border-radius: 30px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); width: 100%;
+        }
+        .secondary-btn:hover { background: rgba(255,255,255,0.03); border-color: rgba(191,161,95,0.5); transform: translateY(-3px) scale(1.02); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+        .secondary-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .btn-group { display: flex; gap: 1.2rem; justify-content: center; margin-top: 1.5rem; }
+
+        /* Processing */
+        .progress-container { width: 100%; max-width: 450px; margin: 2rem 0; }
+        .progress-track { width: 100%; height: 6px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; position: relative; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; box-shadow: 0 0 20px var(--accent); transition: width 0.1s linear; }
+        .progress-text { font-size: 1.3rem; font-weight: 600; color: #fff; text-align: center; margin-bottom: 0.8rem; letter-spacing: 0.02em; }
+        
+        /* Download View */
+        .success-icon { width: 85px; height: 85px; color: var(--safe); margin-bottom: 1.5rem; filter: drop-shadow(0 0 20px rgba(74,222,128,0.4)); animation: popBounce 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes popBounce { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+        .download-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+        
+        .stats-row { display: flex; gap: 1.5rem; margin: 2.5rem 0; width: 100%; justify-content: center; }
+        .stat-box {
+            background: linear-gradient(180deg, rgba(20,20,22,0.4), rgba(5,5,7,0.6)); 
+            border: 1px solid var(--glass-border); padding: 1.8rem 2rem; border-radius: 24px; text-align: center; flex: 1; max-width: 300px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.02), 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .stat-value { display: block; font-size: 2.2rem; font-weight: 700; color: var(--safe); margin-bottom: 0.5rem; text-shadow: 0 0 15px rgba(74,222,128,0.3); }
+        .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+
+        @media (max-width: 900px) {
+            .editor-layout { flex-direction: column; }
+            .controls-sidebar { width: 100%; height: auto; }
+            .preview-wrapper { height: 400px; }
+            .action-card { padding: 2rem 1.5rem; }
+            .tool-header h1 { font-size: 2.4rem; }
+            .btn-group { flex-direction: column; }
+            .btn-group button { width: 100%; }
+        }
+
+        /* --- Preloader Styles --- */
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            gap: 1.5rem;
+        }
+
+        .loader-ring {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(191, 161, 95, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
+            animation: spinLoader 1s linear infinite;
+        }
+
+        .loader-text {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px var(--accent-glow);
+            animation: pulseText 1.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes spinLoader {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulseText {
+            from { opacity: 0.5; }
+            to { opacity: 1; }
+        }
+
+        #preloader.fade-out {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        /* Footer */
+        .site-footer { width: 100%; padding: 4rem 2rem 2rem; border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(20px); opacity: 0; transform: translateY(20px); transition: all 0.8s ease; margin-top: auto; }
+        .site-footer.visible { opacity: 1; transform: translateY(0); }
+        .footer-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .footer-links a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--text-main); }
+        .footer-socials { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; }
+        .social-icon { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.3s; }
+        .social-icon svg { width: 18px; height: 18px; fill: currentColor; }
+        .social-icon:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 5px 15px var(--accent-glow); }
+        .footer-copy { color: #555; font-size: 0.75rem; }
+    </style>
+
+    <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js"></script>
+</head>
+<body>
+
+    <div id="preloader">
+        <div class="loader-ring"></div>
+        <div class="loader-text">Hikaru Labs</div>
+    </div>
+
+    <canvas id="star-canvas"></canvas>
+
+    <header>
+        <a href="browse.html" class="logo-container">
+            <img src="logo.png" alt="Hikaru Labs Logo" class="brand-logo" onerror="this.onerror=null; this.src='https://yt3.googleusercontent.com/GvW7bFuzppVUcWqei5e8IAV8MrcjFmDVg-OYSew7SiYTUPN7isU0z_1XSlSK5y6mJkRbAO7F0w=s160-c-k-c0x00ffffff-no-rj'" />
+            <div class="logo-text">Hikaru <span>Labs</span></div>
+        </a>
+        <nav class="nav-links">
+            <a href="browse.html" class="back-btn">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                Back
+            </a>
+        </nav>
+    </header>
+
+    <main class="tool-container">
+        <div class="tool-header">
+            <h1>HEIC & RAW Converter</h1>
+            <p>Change image file types instantly. 100% local, lightning fast batch processing.</p>
+        </div>
+
+        <div class="action-card" id="main-card">
+            
+            
+            
+            <!-- Native Banner Container -->
+            <div id="container-2ba1c9016f96b1de6d694f4502c2acba" style="margin: 15px auto; text-align: center; display: flex; justify-content: center;"></div>
+
+            <!-- Ad Container -->
+            <div id="ad-container-top" style="min-height: 90px; margin: 15px auto; width: 100%; max-width: 728px; text-align: center; display: flex; justify-content: center; align-items: center; z-index: 10;"></div>
+
+            <div id="view-upload" class="view-state active">
+                <div class="drop-zone" id="drop-zone">
+                    <svg class="drop-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    <h3>Drag & Drop images or ZIPs here</h3>
+                    <p>Load multiple files. Zero server uploads.</p>
+                    <button class="primary-btn" style="width: auto;" id="browse-btn">Select Files</button>
+                    <input type="file" id="file-input" accept="image/jpeg, image/png, image/webp, application/zip, .zip" multiple hidden>
+                </div>
+            </div>
+
+            <div id="view-editor" class="view-state">
+                <div class="editor-layout">
+                    
+                    <div class="preview-wrapper">
+                        <div class="preview-header">
+                            <h4>Conversion Queue</h4>
+                            <span id="file-count-display">0 files loaded</span>
+                        </div>
+                        <div class="file-list" id="file-list">
+                            </div>
+                    </div>
+
+                    <div class="controls-sidebar">
+                        
+                        <div class="control-group">
+                            <span class="control-label">Target Format</span>
+                            <select id="format-select" class="flat-select">
+                                <option value="jpeg">JPEG (.jpg) - Small Size</option>
+                                <option value="png">PNG (.png) - Lossless / Transparent</option>
+                                <option value="webp">WEBP (.webp) - Modern Web</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group" style="margin-top: 1rem;">
+                            <div class="slider-row" id="quality-wrapper">
+                                <div class="slider-header">
+                                    <span>Export Quality</span>
+                                    <span class="val" id="quality-val">90%</span>
+                                </div>
+                                <input type="range" id="quality-slider" min="0.1" max="1" step="0.05" value="0.9">
+                                <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; font-style: italic;" id="quality-helper">Adjust for optimal file size.</p>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: auto; padding-top: 1.5rem;">
+                            <button class="primary-btn" id="process-btn">Convert Files</button>
+                            <button class="secondary-btn" id="cancel-btn" style="margin-top: 1rem;">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-processing" class="view-state">
+                <div class="progress-text" id="progress-text">Converting Files...</div>
+                <div class="progress-container">
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                <p style="color: var(--accent); margin-top: 0.5rem; font-size: 0.95rem; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;">Accelerated Local Engine...</p>
+            </div>
+
+            <div id="view-download" class="view-state">
+                <svg class="success-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                <h3 class="download-title">Conversion Complete</h3>
+                <p style="color: var(--text-muted); margin-bottom: 2rem;">Files successfully converted securely on your device.</p>
+
+                <div class="stats-row">
+                    <div class="stat-box" style="border-color: rgba(74, 222, 128, 0.4); background: linear-gradient(180deg, rgba(74, 222, 128, 0.05), rgba(20,20,22,0.6));">
+                        <span class="stat-value" id="stat-files">0</span>
+                        <span class="stat-label">Files Converted</span>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="primary-btn" id="download-btn" style="width:auto;">Download ZIP</button>
+                    <button class="secondary-btn" id="reset-btn" style="width:auto;">Convert Another Batch</button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="site-footer" id="site-footer">
+        <div class="footer-links">
+            <a href="story.html">Our Story</a>
+            <a href="Privacy Policy.pdf" target="_blank">Privacy Policy</a>
+            <a href="Terms & Condition.pdf" target="_blank">Terms & Conditions</a>
+            <a href="mailto:aksh@hikarulabs.xyz">Contact Us</a>
+        </div>
+        <div class="footer-socials">
+            <a href="https://www.instagram.com/hikarulabs/" target="_blank" class="social-icon" aria-label="Instagram">
+                <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            </a>
+            <a href="https://www.linkedin.com/company/hikaru-labs/" target="_blank" class="social-icon" aria-label="LinkedIn">
+                <svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            </a>
+            <a href="https://x.com/Hikaru_Labs" target="_blank" class="social-icon" aria-label="X">
+                <svg viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+            </a>
+        </div>
+        <p class="footer-copy">© 2026 Hikaru Labs. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // --- Firebase Init ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSVt_JqH2vsqFLuT5xDOQQUyxU11QMKak",
+            authDomain: "hikaru-auth.firebaseapp.com",
+            projectId: "hikaru-auth",
+            storageBucket: "hikaru-auth.firebasestorage.app",
+            messagingSenderId: "906310702181",
+            appId: "1:906310702181:web:16ec0e0b5cff635854a28c",
+            measurementId: "G-4MSLFECF5S"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- Fast Encryption Engine ---
+        const CIPHER_KEY = "HIKARU_LOCAL_FIRST";
+        function hikaruDecrypt(base64Str) {
+            try {
+                let text = atob(base64Str);
+                let result = "";
+                for(let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ CIPHER_KEY.charCodeAt(i % CIPHER_KEY.length));
+                }
+                return JSON.parse(result);
+            } catch (e) { return null; }
+        }
+
+        // Limits Logic State
+        let activeTargetUid = null;
+        let userPlan = 'free';
+        let totalSyncedUsage = 0;
+        let pendingUsageBytes = 0;
+        const LIMIT_1GB = 1024 * 1024 * 1024;
+
+        // --- Web Worker String: Zero-Copy ArrayBuffer Transfer Engine ---
+        const workerCode = `
+            let sharedCanvas = null;
+
+            self.onmessage = async function(e) {
+                const { file, outType, quality, index } = e.data;
+                try {
+                    const bitmap = await createImageBitmap(file);
+                    
+                    if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+                    sharedCanvas.width = bitmap.width; 
+                    sharedCanvas.height = bitmap.height;
+                    
+                    const ctx = sharedCanvas.getContext('2d', { alpha: false, willReadFrequently: true });
+                    
+                    // Prevent black backgrounds when transparent PNG -> JPEG
+                    if (outType === 'image/jpeg' || outType === 'image/jpg') {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, sharedCanvas.width, sharedCanvas.height);
+                    }
+                    
+                    ctx.drawImage(bitmap, 0, 0);
+                    
+                    // Generate Blob
+                    const blob = await sharedCanvas.convertToBlob({ type: outType, quality: quality });
+                    bitmap.close();
+                    
+                    // Purge Canvas Memory Array Immediately
+                    sharedCanvas.width = 1; sharedCanvas.height = 1;
+                    
+                    // EXTREME OPTIMIZATION: Extract raw ArrayBuffer and transfer ownership to bypass cloning lockups
+                    const buffer = await blob.arrayBuffer();
+                    self.postMessage({ success: true, buffer: buffer, index: index }, [buffer]);
+                    
+                } catch (err) {
+                    self.postMessage({ success: false, error: err.message, index: index });
+                }
+            };
+        `;
+        const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(workerBlob);
+
+        // Cap at 3 workers to prevent memory exhaustion on low-end hardware
+        const maxWorkers = Math.min(navigator.hardwareConcurrency || 2, 3);
+        const workerPool = [];
+        for (let i = 0; i < maxWorkers; i++) {
+            workerPool.push(new Worker(workerUrl));
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const preloader = document.getElementById('preloader');
+            window.addEventListener('load', () => preloader.classList.add('fade-out')); setTimeout(() => { if(preloader) preloader.classList.add('fade-out'); }, 2000);
+
+            // --- Authentication & Session Limits Check ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('sess_token');
+            const storedToken = sessionStorage.getItem('hikaru_token');
+            const activeToken = urlToken || storedToken;
+            let activeSession = null;
+
+            if (activeToken) activeSession = hikaruDecrypt(activeToken);
+
+            if (activeSession) {
+                if (urlToken) {
+                    sessionStorage.setItem('hikaru_token', urlToken);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                activeTargetUid = activeSession.uid;
+                fetchUserPlanAndLimits(activeTargetUid);
+            } else {
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        activeTargetUid = user.uid;
+                        fetchUserPlanAndLimits(activeTargetUid);
+                    } else {
+                        window.location.href = "sign.html";
+                    }
+                });
+            }
+
+            async function fetchUserPlanAndLimits(uid) {
+                try {
+                    const doc = await db.collection('users').doc(uid).get();
+                    if (doc.exists) {
+                        const data = doc.data();
+                        userPlan = (data.plan || 'free').toLowerCase();
+
+                        if (userPlan === 'free' && !window._adsterraInjected) {
+                            window._adsterraInjected = true;
+                            // Additional Adsterra Ads
+                            if (!window._extraAdsInjected) {
+                                window._extraAdsInjected = true;
+                                try {
+                                    const pop = document.createElement('script');
+                                    pop.src = "https://pl31295622.profitableratecpmnetwork.com/12/29/0a/12290a8bc47bcb02bb5d23c4c91caf38.js";
+                                    document.body.appendChild(pop);
+
+                                    const soc = document.createElement('script');
+                                    soc.src = "https://pl31295623.profitableratecpmnetwork.com/26/04/ec/2604ec6bd015a176a079a7bd0b59ce73.js";
+                                    document.body.appendChild(soc);
+
+                                    const nat = document.createElement('script');
+                                    nat.async = true;
+                                    nat.setAttribute('data-cfasync', 'false');
+                                    nat.src = "https://pl31295625.profitableratecpmnetwork.com/2ba1c9016f96b1de6d694f4502c2acba/invoke.js";
+                                    document.body.appendChild(nat);
+                                    
+                                    // Smartlink click handler (one-time)
+                                    document.addEventListener('click', function smartlinkHandler(e) {
+                                        window.open("https://www.profitableratecpmnetwork.com/nrh5dkbu?key=b77a4478805a106c32e2bd2cf907fda7", "_blank");
+                                        document.removeEventListener('click', smartlinkHandler);
+                                    }, {once: true});
+                                } catch(e) {
+                                    console.warn("Failed to load additional ads", e);
+                                }
+                            }
+
+                            try {
+                                const adScript = document.createElement('script');
+                                adScript.src = "https://www.profitableratecpmnetwork.com/qyxu8icy?key=6223f4d35e0dcf2d19f549cb2f916281";
+                                adScript.async = true;
+                                adScript.defer = true;
+                                adScript.onerror = function() { console.warn("Ad blocked or failed to load"); };
+                                document.body.appendChild(adScript);
+                            } catch (e) {
+                                console.warn("Failed to inject ad script", e);
+                            }
+                        }
+
+                        totalSyncedUsage = data.dailyUsage || 0;
+                        checkLimits();
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                }
+            }
+
+            function checkLimits() {
+                if (userPlan === 'free' && totalSyncedUsage >= LIMIT_1GB) {
+                    alert("Daily 1GB limit reached for Free Plan. Please upgrade to continue processing.");
+                    document.getElementById('file-input').disabled = true;
+                    document.getElementById('browse-btn').disabled = true;
+                }
+            }
+
+            // Sync usage every 10 seconds
+            setInterval(async () => {
+                if (pendingUsageBytes > 0 && activeTargetUid) {
+                    try {
+                        const docRef = db.collection('users').doc(activeTargetUid);
+                        const doc = await docRef.get();
+                        let currentUsage = doc.data()?.dailyUsage || 0;
+                        let newUsage = currentUsage + pendingUsageBytes;
+                        
+                        await docRef.set({
+                            dailyUsage: newUsage,
+                            lastSync: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                        
+                        totalSyncedUsage = newUsage;
+                        pendingUsageBytes = 0; // Reset pending
+                        checkLimits();
+                    } catch (e) {
+                        console.error("Error syncing limits:", e);
+                    }
+                }
+            }, 10000);
+
+            // UI Elements
+            const viewUpload = document.getElementById('view-upload');
+            const viewEditor = document.getElementById('view-editor');
+            const viewProcessing = document.getElementById('view-processing');
+            const viewDownload = document.getElementById('view-download');
+            
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const browseBtn = document.getElementById('browse-btn');
+            
+            const fileListContainer = document.getElementById('file-list');
+            const fileCountDisplay = document.getElementById('file-count-display');
+            
+            const formatSelect = document.getElementById('format-select');
+            const qualityWrapper = document.getElementById('quality-wrapper');
+            const qualitySlider = document.getElementById('quality-slider');
+            const qualityVal = document.getElementById('quality-val');
+            const qualityHelper = document.getElementById('quality-helper');
+            
+            const processBtn = document.getElementById('process-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const resetBtn = document.getElementById('reset-btn');
+
+            const progressText = document.getElementById('progress-text');
+            const progressFill = document.getElementById('progress-fill');
+            const statFiles = document.getElementById('stat-files');
+
+            // State
+            let previewData = []; // Array of { file, oldName, newName, ext }
+            let processedBuffers = []; // Array of { name, buffer } - Direct RAM chunks
+            let finalZipBlobUrl = null;
+            let finalDownloadName = '';
+
+            const switchView = (viewId) => {
+                [viewUpload, viewEditor, viewProcessing, viewDownload].forEach(el => el.classList.remove('active'));
+                document.getElementById(viewId).classList.add('active');
+            };
+
+            const preventDefaults = (e) => { e.preventDefault(); e.stopPropagation(); };
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => { dropZone.addEventListener(e, preventDefaults, false); document.body.addEventListener(e, preventDefaults, false); });
+            ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('dragover')));
+            ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('dragover')));
+            
+            dropZone.addEventListener('drop', (e) => { if (e.dataTransfer.files.length > 0 && !fileInput.disabled) initQueue(e.dataTransfer.files); });
+            browseBtn.addEventListener('click', () => { if (!browseBtn.disabled) fileInput.click(); });
+            dropZone.addEventListener('click', (e) => { if (!fileInput.disabled && e.target !== browseBtn && e.target !== fileInput) fileInput.click(); });
+            fileInput.addEventListener('change', function() { if (this.files.length > 0) initQueue(this.files); this.value = ''; });
+
+            // Zip Unpacking Support
+            const handleZipFile = async (file) => {
+                try {
+                    if (typeof fflate === 'undefined') return [];
+                    const buffer = await file.arrayBuffer();
+                    const extracted = [];
+
+                    return new Promise((resolve) => {
+                        fflate.unzip(new Uint8Array(buffer), (err, unzipped) => {
+                            if (err) return resolve([]);
+                            for (const [filename, data] of Object.entries(unzipped)) {
+                                if (data.length === 0 || filename.includes('__MACOSX')) continue;
+                                const ext = filename.split('.').pop().toLowerCase();
+                                if (['jpg','jpeg','png','webp'].includes(ext)) {
+                                    const blob = new Blob([data], { type: `image/${ext === 'jpg' ? 'jpeg' : ext}` });
+                                    extracted.push(new File([blob], filename.split('/').pop(), { type: blob.type }));
+                                }
+                            }
+                            resolve(extracted);
+                        });
+                    });
+                } catch (e) { return []; }
+            };
+
+            const initQueue = async (files) => {
+                const rawFiles = Array.from(files);
+                
+                let batchSize = 0;
+                rawFiles.forEach(f => batchSize += f.size);
+                
+                // Enforce immediately before queuing if limit reached
+                if (userPlan === 'free' && (totalSyncedUsage + pendingUsageBytes + batchSize) > LIMIT_1GB) {
+                    alert("This batch exceeds your daily 1GB limit on the Free Plan. Please upgrade.");
+                    return;
+                }
+                
+                pendingUsageBytes += batchSize; // Track usage for the 10s sync
+
+                let validFiles = [];
+
+                for (let file of rawFiles) {
+                    if (file.type.includes('zip') || file.name.toLowerCase().endsWith('.zip')) {
+                        const unzipped = await handleZipFile(file);
+                        validFiles.push(...unzipped);
+                    } else if (file.type.startsWith('image/')) {
+                        validFiles.push(file);
+                    }
+                }
+
+                if(validFiles.length === 0) { alert("Please upload valid image files or ZIP archives."); return; }
+                
+                // EXTREME UI OPTIMIZATION: Do NOT use URL.createObjectURL for thumbnails. 
+                // We use CSS badges based on extension to prevent Main Thread DOM hangs.
+                fileCountDisplay.textContent = `${validFiles.length} files loaded`;
+                
+                previewData = validFiles.map((file, index) => {
+                    const extMatch = file.name.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
+                    const ext = extMatch ? extMatch[1].toUpperCase() : 'IMG';
+                    return {
+                        file: file,
+                        oldName: file.name,
+                        newName: file.name,
+                        originalExt: ext.substring(0,4),
+                        index: index
+                    };
+                });
+
+                switchView('view-editor');
+                calculateNewNames(); 
+            };
+
+            formatSelect.addEventListener('change', (e) => {
+                const format = e.target.value;
+                if (format === 'png') {
+                    qualityWrapper.classList.add('disabled');
+                    qualityHelper.textContent = "Quality slider is disabled for lossless PNG.";
+                } else {
+                    qualityWrapper.classList.remove('disabled');
+                    qualityHelper.textContent = "Adjust for optimal file size vs. quality.";
+                }
+                calculateNewNames();
+            });
+
+            qualitySlider.addEventListener('input', (e) => {
+                qualityVal.textContent = `${Math.round(e.target.value * 100)}%`;
+            });
+
+            function calculateNewNames() {
+                const targetFormat = formatSelect.value;
+                let ext = targetFormat === 'jpeg' ? '.jpg' : `.${targetFormat}`;
+
+                fileListContainer.innerHTML = ''; 
+                const frag = document.createDocumentFragment();
+
+                previewData.forEach((item) => {
+                    const originalName = item.oldName;
+                    const lastDotIdx = originalName.lastIndexOf('.');
+                    let origBase = lastDotIdx !== -1 ? originalName.substring(0, lastDotIdx) : originalName;
+
+                    const finalNewName = `${origBase}${ext}`;
+                    item.newName = finalNewName;
+
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.innerHTML = `
+                        <div class="file-badge">${item.originalExt}</div>
+                        <div class="file-details">
+                            <span class="old-name">${originalName}</span>
+                            <div class="new-name-container">
+                                <svg viewBox="0 0 24 24" width="14" height="14" fill="var(--text-muted)"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                                <span class="new-name">${finalNewName}</span>
+                            </div>
+                        </div>
+                    `;
+                    frag.appendChild(div);
+                });
+
+                fileListContainer.appendChild(frag);
+            }
+
+            // --- Multi-Threaded ArrayBuffer Transfer Engine ---
+            processBtn.addEventListener('click', async () => {
+                switchView('view-processing');
+                
+                if (finalZipBlobUrl) URL.revokeObjectURL(finalZipBlobUrl);
+                processedBuffers = [];
+                progressFill.style.width = '0%';
+
+                const format = formatSelect.value;
+                const outType = `image/${format}`;
+                const quality = parseFloat(qualitySlider.value);
+                const totalFiles = previewData.length;
+
+                let completedCount = 0;
+                let currentIndex = 0;
+
+                try {
+                    // --- HEIC/RAW Main Thread Processing (heic2any spawns its own workers) ---
+                    for (let i = 0; i < totalFiles; i++) {
+                        const jobObj = previewData[i];
+                        const file = jobObj.file;
+                        const fname = file.name.toLowerCase();
+                        
+                        progressText.textContent = `Converting ${i + 1} of ${totalFiles} (this may take a moment)`;
+                        progressFill.style.width = `${Math.round(((i) / totalFiles) * 100)}%`;
+                        
+                        try {
+                            let finalBlob = file;
+                            
+                            if (fname.endsWith('.heic') || fname.endsWith('.heif')) {
+                                finalBlob = await heic2any({ blob: file, toType: outType, quality: quality });
+                                if (Array.isArray(finalBlob)) finalBlob = finalBlob[0];
+                            } else if (fname.endsWith('.dng') || fname.endsWith('.cr2') || fname.endsWith('.tiff') || fname.endsWith('.tif') || fname.endsWith('.nef') || fname.endsWith('.arw')) {
+                                const buffer = await file.arrayBuffer();
+                                const ifds = UTIF.decode(buffer);
+                                UTIF.decodeImage(buffer, ifds[0]);
+                                const rgba = UTIF.toRGBA8(ifds[0]);
+                                
+                                const canvas = document.createElement('canvas');
+                                canvas.width = ifds[0].width;
+                                canvas.height = ifds[0].height;
+                                const ctx = canvas.getContext('2d');
+                                const imgData = ctx.createImageData(canvas.width, canvas.height);
+                                imgData.data.set(rgba);
+                                ctx.putImageData(imgData, 0, 0);
+                                
+                                finalBlob = await new Promise(resolve => canvas.toBlob(resolve, outType, quality));
+                            } else {
+                                // Standard formats
+                                const bitmap = await createImageBitmap(file);
+                                const canvas = document.createElement('canvas');
+                                canvas.width = bitmap.width;
+                                canvas.height = bitmap.height;
+                                const ctx = canvas.getContext('2d');
+                                ctx.drawImage(bitmap, 0, 0);
+                                finalBlob = await new Promise(resolve => canvas.toBlob(resolve, outType, quality));
+                            }
+                            
+                            const outBuffer = await finalBlob.arrayBuffer();
+                            processedBuffers.push({ name: jobObj.newName, buffer: outBuffer, type: outType });
+                        } catch(e) {
+                            console.error("Conversion failed for", file.name, e);
+                        }
+                    }
+                    progressFill.style.width = "100%";
+
+                    if (processedBuffers.length === 1) {
+                        // Reconstruct single blob from buffer
+                        const blob = new Blob([processedBuffers[0].buffer], { type: processedBuffers[0].type });
+                        finalZipBlobUrl = URL.createObjectURL(blob);
+                        finalDownloadName = processedBuffers[0].name;
+                        setTimeout(finishDownloadPhase, 400);
+                    } else if (processedBuffers.length > 1) {
+                        // Bulk ZIP Handling bypassing ArrayBuffer extraction
+                        progressText.textContent = "Zipping Files...";
+                        progressFill.style.animation = "none";
+                        
+                        const zipData = {};
+                        for (let item of processedBuffers) {
+                            let safeName = item.name;
+                            let counter = 1;
+                            while(zipData[safeName]) {
+                                const extIdx = safeName.lastIndexOf('.');
+                                const base = extIdx !== -1 ? safeName.substring(0, extIdx) : safeName;
+                                const ext = extIdx !== -1 ? safeName.substring(extIdx) : '';
+                                safeName = `${base}_${counter}${ext}`;
+                                counter++;
+                            }
+                            // Directly attach the raw buffer generated by the worker
+                            zipData[safeName] = new Uint8Array(item.buffer);
+                        }
+                        
+                        // consume: true wipes the UInt8Arrays from memory as it zips them
+                        const zippedContent = await new Promise((resolve, reject) => {
+                            fflate.zip(zipData, { level: 0, consume: true }, (err, data) => {
+                                if (err) reject(err); else resolve(data);
+                            });
+                        });
+                        
+                        finalZipBlobUrl = URL.createObjectURL(new Blob([zippedContent], { type: 'application/zip' }));
+                        finalDownloadName = 'Hikaru_Converted.zip';
+                        
+                        setTimeout(finishDownloadPhase, 400);
+                    }
+                } catch (err) {
+                    alert("An error occurred during conversion: " + err.message);
+                    resetApp();
+                }
+            });
+
+            const finishDownloadPhase = () => {
+                statFiles.textContent = processedBuffers.length;
+                downloadBtn.textContent = processedBuffers.length > 1 ? `Download ZIP (${processedBuffers.length} Files)` : "Download File";
+                switchView('view-download');
+            };
+
+            const resetApp = () => { 
+                if (finalZipBlobUrl) URL.revokeObjectURL(finalZipBlobUrl);
+                previewData = []; processedBuffers = [];
+                switchView('view-upload'); 
+            };
+            cancelBtn.addEventListener('click', resetApp);
+            resetBtn.addEventListener('click', resetApp);
+
+            downloadBtn.addEventListener('click', () => {
+                if (!finalZipBlobUrl) return;
+                const a = document.createElement('a'); 
+                a.href = finalZipBlobUrl; 
+                a.download = finalDownloadName;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a); 
+            });
+
+            // Star Animation
+            const canvas = document.getElementById('star-canvas'); const ctx = canvas.getContext('2d');
+            let stars = []; let mouse = { x: -1000, y: -1000 };
+            window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+            
+            function initStars() {
+                canvas.width = window.innerWidth; canvas.height = window.innerHeight; stars = [];
+                for(let i = 0; i < 180; i++) { stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, radius: Math.random() * 2, speedX: (Math.random() - 0.5) * 0.5, speedY: (Math.random() - 0.5) * 0.5, opacity: Math.random() * 0.8 + 0.2 }); }
+            }
+
+            function animateStars() {
+                ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                for(let i = 0; i < stars.length; i++) {
+                    let s = stars[i]; let dx = s.x - mouse.x; let dy = s.y - mouse.y; let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 150) { s.x += (dx / dist) * 1.5; s.y += (dy / dist) * 1.5; }
+                    s.x += s.speedX; s.y += s.speedY;
+                    if(s.x < 0) s.x = canvas.width; if(s.x > canvas.width) s.x = 0;
+                    if(s.y < 0) s.y = canvas.height; if(s.y > canvas.height) s.y = 0;
+                    
+                    ctx.beginPath(); ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                    ctx.shadowBlur = s.radius * 6; ctx.shadowColor = '#bfa15f'; ctx.fillStyle = `rgba(191, 161, 95, ${s.opacity})`; ctx.fill(); ctx.shadowBlur = 0;
+                    
+                    s.opacity += (Math.random() - 0.5) * 0.05;
+                    if (s.opacity < 0.2) s.opacity = 0.2; if (s.opacity > 1) s.opacity = 1;
+                }
+                requestAnimationFrame(animateStars);
+            }
+            window.addEventListener('resize', initStars); initStars(); animateStars();
+
+            // Footer Reveal Observer
+            const footerObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        document.getElementById('site-footer').classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            footerObserver.observe(document.getElementById('site-footer'));
+        });
+    </script>
+</body>
+</html>
