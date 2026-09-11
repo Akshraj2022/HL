@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upgrade Plan - Hikaru Labs</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #050505;
+            --glass-bg: rgba(15, 15, 17, 0.4);
+            --glass-border: rgba(191, 161, 95, 0.15); 
+            --glass-hover: rgba(191, 161, 95, 0.08);
+            --accent: #bfa15f;
+            --accent-hover: #d4b472;
+            --accent-glow: rgba(191, 161, 95, 0.3);
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+
+        body, html {
+            background: url('bg1.png') no-repeat center center fixed;
+            background-size: cover;
+            background-color: var(--bg-dark); 
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(10, 10, 12, 0.75); z-index: -2; pointer-events: none;
+        }
+
+        #star-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
+
+        /* Header */
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.2rem 4%; background: rgba(5, 5, 5, 0.6);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 4px 40px rgba(0, 0, 0, 0.8), 0 1px 15px rgba(191, 161, 95, 0.1);
+            border-bottom: 1px solid var(--glass-border);
+            animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        header::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.8; box-shadow: 0 0 10px var(--accent);
+        }
+
+        .logo-container { display: flex; align-items: center; gap: 12px; text-decoration: none; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .logo-container:hover { transform: scale(1.03); }
+        .brand-logo { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--accent); object-fit: cover; box-shadow: 0 0 15px var(--accent-glow), inset 0 0 8px rgba(0,0,0,0.8); background-color: #000; }
+        .logo-text { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-main); }
+        .logo-text span { color: var(--accent); }
+
+        .back-btn {
+            background: transparent; border: 1px solid var(--glass-border); color: var(--text-main);
+            padding: 0.5rem 1.2rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500;
+            cursor: pointer; text-decoration: none; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+        }
+        .back-btn:hover { background: var(--glass-hover); border-color: rgba(191,161,95,0.4); transform: translateX(-4px); box-shadow: 0 0 15px rgba(191,161,95,0.1); }
+
+        /* Pricing Layout */
+        .pricing-container { max-width: 1300px; margin: 4rem auto; padding: 0 2rem; display: flex; flex-direction: column; align-items: center; position: relative; z-index: 10; }
+        .pricing-header { text-align: center; margin-bottom: 4rem; animation: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        .pricing-header h1 { font-size: 3.2rem; font-weight: 700; margin-bottom: 1rem; letter-spacing: -0.04em; text-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .pricing-header p { font-size: 1.15rem; color: var(--text-muted); max-width: 600px; margin: 0 auto; }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.97) translateY(15px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; width: 100%; align-items: stretch; }
+
+        /* Plan Cards */
+        .plan-card {
+            background: var(--glass-bg); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border); box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            border-radius: 24px; padding: 2.5rem 1.5rem; display: flex; flex-direction: column;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); position: relative;
+        }
+        .plan-card:hover { border-color: rgba(191, 161, 95, 0.4); transform: translateY(-8px); box-shadow: 0 40px 80px rgba(0,0,0,0.8), 0 0 25px rgba(191, 161, 95, 0.2); }
+        
+        .plan-card.popular {
+            border-color: var(--accent);
+            background: linear-gradient(180deg, rgba(191,161,95,0.08) 0%, var(--glass-bg) 100%);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 0 30px rgba(191,161,95,0.15);
+        }
+        .popular-badge {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            background: var(--accent); color: #000; font-size: 0.75rem; font-weight: 700;
+            padding: 6px 16px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; box-shadow: 0 5px 15px var(--accent-glow);
+        }
+
+        .plan-name { font-size: 1.2rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; letter-spacing: 0.05em; }
+        .plan-price { font-size: 2.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: baseline; gap: 4px; text-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .plan-price span { font-size: 1rem; font-weight: 400; color: var(--text-muted); }
+        .plan-alt-price { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 2rem; min-height: 20px; }
+
+        .plan-features { list-style: none; margin-bottom: 2.5rem; flex: 1; }
+        .plan-features li { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 1.2rem; font-size: 0.95rem; color: #fff; line-height: 1.4; }
+        .plan-features li svg { color: var(--accent); flex-shrink: 0; margin-top: 3px; filter: drop-shadow(0 0 5px rgba(191,161,95,0.4)); }
+        .plan-features li.dim { color: var(--text-muted); }
+        .plan-features li.dim svg { color: var(--text-muted); filter: none; }
+
+        .btn-upgrade {
+            width: 100%; padding: 1rem; border-radius: 30px; font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); border: 1px solid var(--glass-border);
+            background: transparent; color: var(--text-main); text-align: center; text-decoration: none;
+        }
+        .btn-upgrade:hover:not(:disabled) { background: rgba(255,255,255,0.03); border-color: rgba(191,161,95,0.5); transform: translateY(-3px) scale(1.02); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+        
+        .plan-card.popular .btn-upgrade { background: linear-gradient(135deg, #2a2a2d 0%, #1a1a1c 100%); color: var(--accent); border-color: rgba(191,161,95,0.4); box-shadow: 0 8px 20px rgba(0,0,0,0.4), 0 0 15px rgba(191,161,95,0.15); }
+        .plan-card.popular .btn-upgrade:hover:not(:disabled) { background: linear-gradient(135deg, #323236 0%, #222225 100%); border-color: var(--accent); box-shadow: 0 10px 25px rgba(0,0,0,0.5), 0 0 30px rgba(191, 161, 95, 0.4); }
+        
+        .btn-current { background: rgba(0,0,0,0.4) !important; color: var(--text-muted) !important; border-color: var(--glass-border) !important; cursor: not-allowed; box-shadow: inset 0 0 10px rgba(0,0,0,0.5) !important; }
+        .btn-current:hover { transform: none !important; }
+
+        @media (max-width: 900px) { .pricing-grid { grid-template-columns: 1fr; max-width: 400px; } .pricing-header h1 { font-size: 2.4rem; } }
+
+        /* --- Preloader Styles --- */
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: var(--bg-dark); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease; gap: 1.5rem;
+        }
+        .loader-ring {
+            width: 60px; height: 60px; border: 3px solid rgba(191, 161, 95, 0.1); border-radius: 50%;
+            border-top-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); animation: spinLoader 1s linear infinite;
+        }
+        .loader-text {
+            font-size: 1rem; font-weight: 500; color: var(--accent); letter-spacing: 0.15em;
+            text-transform: uppercase; text-shadow: 0 0 10px var(--accent-glow); animation: pulseText 1.5s ease-in-out infinite alternate;
+        }
+        @keyframes spinLoader { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulseText { from { opacity: 0.5; } to { opacity: 1; } }
+        #preloader.fade-out { opacity: 0; visibility: hidden; }
+    </style>
+</head>
+<body>
+
+    <div id="preloader">
+        <div class="loader-ring"></div>
+        <div class="loader-text">Hikaru Labs</div>
+    </div>
+
+    <canvas id="star-canvas"></canvas>
+
+    <header>
+        <a href="browse.html" class="logo-container">
+            <img src="logo.png" alt="Hikaru Labs Logo" class="brand-logo" onerror="this.src='https://i.postimg.cc/7LRMnvPK/Untitled-design-(1).png'" />
+            <div class="logo-text">Hikaru <span>Labs</span></div>
+        </a>
+        <nav class="nav-links">
+            <a href="account.html" class="back-btn">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                Account
+            </a>
+        </nav>
+    </header>
+
+    <main class="pricing-container">
+        <div class="pricing-header">
+            <h1>Select your workspace plan</h1>
+            <p>Upgrade your local processing power and unlock professional features.</p>
+        </div>
+
+        <div class="pricing-grid">
+            
+            <div class="plan-card">
+                <div class="plan-name">FREE</div>
+                <div class="plan-price">₹0<span>/mo</span></div>
+                <div class="plan-alt-price">Forever free</div>
+                <ul class="plan-features">
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> 1 Computer / Person</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> 1 GB Data limit a day</li>
+                    <li class="dim"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Slow speed</li>
+                    <li class="dim"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Shows Ads</li>
+                </ul>
+                <button class="btn-upgrade pay-btn" data-plan="FREE">Current Plan</button>
+            </div>
+
+            <div class="plan-card popular">
+                <div class="popular-badge">Most Popular</div>
+                <div class="plan-name">CUBE</div>
+                <div class="plan-price">₹99<span>/mo</span></div>
+                <div class="plan-alt-price">or ₹1599 one-time payment</div>
+                <ul class="plan-features">
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> 1 Computer / Person</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> No Data Limit</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Faster speed</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> No Ads</li>
+                </ul>
+                <button class="btn-upgrade pay-btn" data-plan="CUBE" data-amount="9900" data-desc="Monthly Subscription">Upgrade to CUBE</button>
+            </div>
+
+            <div class="plan-card">
+                <div class="plan-name">CORE</div>
+                <div class="plan-price">₹199<span>/mo</span></div>
+                <div class="plan-alt-price">Billed monthly</div>
+                <ul class="plan-features">
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Up to 3 Computers / People</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> No Data Limit</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Very fast speed</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Get new tools early</li>
+                </ul>
+                <button class="btn-upgrade pay-btn" data-plan="CORE" data-amount="19900" data-desc="Monthly Subscription">Upgrade to CORE</button>
+            </div>
+
+            <div class="plan-card">
+                <div class="plan-name">STAR</div>
+                <div class="plan-price">₹1599<span>/mo</span></div>
+                <div class="plan-alt-price">Billed monthly</div>
+                <ul class="plan-features">
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Unlimited Computers / Team</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Team Tools & Chat</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Fastest speed</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Better support</li>
+                </ul>
+                <button class="btn-upgrade pay-btn" data-plan="STAR" data-amount="159900" data-desc="Monthly Subscription">Upgrade to STAR</button>
+            </div>
+
+            <div class="plan-card">
+                <div class="plan-name">CUSTOM</div>
+                <div class="plan-price" style="font-size: 1.8rem; margin-bottom: 1.2rem;">Talk to us</div>
+                <div class="plan-alt-price">Enterprise solutions</div>
+                <ul class="plan-features">
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Unlimited Computers / Team</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> All tools & Custom features</li>
+                    <li><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Your own helper</li>
+                </ul>
+                <button class="btn-upgrade" onclick="window.location.href='mailto:support@hikarulabs.xyz'">Contact Us</button>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // --- Preloader Removal ---
+        window.addEventListener('load', () => {
+            const preloader = document.getElementById('preloader');
+            if(preloader) {
+                preloader.classList.add('fade-out');
+            }
+        });
+
+        // --- Firebase Config & Decryption Engine ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSVt_JqH2vsqFLuT5xDOQQUyxU11QMKak",
+            authDomain: "hikaru-auth.firebaseapp.com",
+            projectId: "hikaru-auth",
+            storageBucket: "hikaru-auth.firebasestorage.app",
+            messagingSenderId: "906310702181",
+            appId: "1:906310702181:web:16ec0e0b5cff635854a28c"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        
+        const CIPHER_KEY = "HIKARU_LOCAL_FIRST";
+        function hikaruDecrypt(base64Str) {
+            try {
+                let text = atob(base64Str);
+                let result = "";
+                for(let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ CIPHER_KEY.charCodeAt(i % CIPHER_KEY.length));
+                }
+                return JSON.parse(result);
+            } catch (e) { return null; }
+        }
+
+        const storedToken = sessionStorage.getItem('hikaru_token');
+        const activeSession = storedToken ? hikaruDecrypt(storedToken) : null;
+        if (!activeSession) {
+            window.location.href = "sign.html";
+        }
+
+        // --- Plan Tier Logic ---
+        const planTiers = {
+            'FREE': 0,
+            'CUBE': 1,
+            'CORE': 2,
+            'STAR': 3,
+            'CUSTOM': 4
+        };
+
+        // --- Fetch & Update Current Plan ---
+        async function fetchPlan() {
+            try {
+                const doc = await db.collection('users').doc(activeSession.uid).get();
+                if(doc.exists) {
+                    const currentPlanStr = (doc.data().plan || 'FREE').toUpperCase();
+                    const currentTierLevel = planTiers[currentPlanStr] !== undefined ? planTiers[currentPlanStr] : 0;
+                    
+                    document.querySelectorAll('.plan-card').forEach(card => {
+                        const planName = card.querySelector('.plan-name').textContent.trim().toUpperCase();
+                        const btn = card.querySelector('button');
+                        const cardTierLevel = planTiers[planName];
+                        
+                        // Ignore the Custom contact button
+                        if(planName === 'CUSTOM') return;
+
+                        if (cardTierLevel === currentTierLevel) {
+                            btn.className = 'btn-upgrade btn-current';
+                            btn.textContent = 'Current Plan';
+                            btn.disabled = true;
+                        } else if (cardTierLevel < currentTierLevel) {
+                            btn.className = 'btn-upgrade btn-current';
+                            btn.textContent = 'Included in your plan';
+                            btn.disabled = true;
+                            btn.style.opacity = '0.6';
+                        }
+                    });
+                }
+            } catch(err) {
+                console.error("Could not fetch plan status:", err);
+            }
+        }
+        fetchPlan();
+
+        // --- Razorpay Payment Integration ---
+        const RAZORPAY_KEY = "rzp_live_ShkXwNNmnUQfiF";
+
+        document.querySelectorAll('.pay-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (this.disabled) return;
+                
+                const planName = this.getAttribute('data-plan');
+                const amountPaise = this.getAttribute('data-amount');
+                const description = this.getAttribute('data-desc');
+
+                // If selecting FREE and it's not the current plan (e.g., downgrading)
+                // Note: The logic above already blocks this, but keeping as a fallback
+                if (planName === 'FREE') {
+                    db.collection('users').doc(activeSession.uid).set({ plan: 'free', updatedAt: new Date().toISOString() }, { merge: true }).then(() => {
+                        window.location.href = "account.html";
+                    });
+                    return;
+                }
+
+                const options = {
+                    "key": RAZORPAY_KEY,
+                    "amount": amountPaise, 
+                    "currency": "INR",
+                    "name": "Hikaru Labs",
+                    "description": `Upgrade to ${planName} Plan`,
+                    "image": "logo.png",
+                    "prefill": {
+                        "name": activeSession.name,
+                        "email": activeSession.email
+                    },
+                    "theme": {
+                        "color": "#bfa15f"
+                    },
+                    "handler": async function (response) {
+                        try {
+                            // Payment successful. Update user document in Firestore.
+                            await db.collection('users').doc(activeSession.uid).set({
+                                plan: planName,
+                                paymentId: response.razorpay_payment_id,
+                                updatedAt: new Date().toISOString()
+                            }, { merge: true });
+
+                            // Redirect to thank you page
+                            window.location.href = `success.html?plan=${planName}`;
+                        } catch (error) {
+                            console.error("Error updating DB:", error);
+                            alert("Payment recorded but failed to update database. Please contact support.");
+                        }
+                    }
+                };
+
+                const rzp1 = new Razorpay(options);
+                rzp1.on('payment.failed', function (response){
+                    alert("Payment Failed: " + response.error.description);
+                });
+                rzp1.open();
+            });
+        });
+
+        // --- Luminous Golden Star System ---
+        const canvas = document.getElementById('star-canvas');
+        const ctx = canvas.getContext('2d');
+        let stars = [];
+        let mouse = { x: -1000, y: -1000 };
+
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+        });
+        
+        function initStars() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            stars = [];
+            for(let i = 0; i < 180; i++) {
+                stars.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 2,
+                    speedX: (Math.random() - 0.5) * 0.5, 
+                    speedY: (Math.random() - 0.5) * 0.5,
+                    opacity: Math.random() * 0.8 + 0.2
+                });
+            }
+        }
+
+        function animateStars() {
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            for(let i = 0; i < stars.length; i++) {
+                let s = stars[i];
+                
+                let dx = s.x - mouse.x;
+                let dy = s.y - mouse.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < 150) {
+                    s.x += (dx / dist) * 1.5;
+                    s.y += (dy / dist) * 1.5;
+                }
+
+                s.x += s.speedX; s.y += s.speedY;
+                
+                if(s.x < 0) s.x = canvas.width; if(s.x > canvas.width) s.x = 0;
+                if(s.y < 0) s.y = canvas.height; if(s.y > canvas.height) s.y = 0;
+                
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                
+                ctx.shadowBlur = s.radius * 6;
+                ctx.shadowColor = '#bfa15f';
+                ctx.fillStyle = `rgba(191, 161, 95, ${s.opacity})`; 
+                ctx.fill();
+                
+                ctx.shadowBlur = 0;
+                
+                s.opacity += (Math.random() - 0.5) * 0.05;
+                if (s.opacity < 0.2) s.opacity = 0.2;
+                if (s.opacity > 1) s.opacity = 1;
+            }
+            requestAnimationFrame(animateStars);
+        }
+
+        window.addEventListener('resize', initStars);
+        initStars();
+        animateStars();
+    </script>
+</body>
+</html>

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Browse Tools - Hikaru Labs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="google-adsense-account" content="ca-pub-2865389325309773">
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #111111;
+            --glass-bg: rgba(22, 22, 24, 0.4);
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --accent: #bfa15f;
+            --accent-hover: #d4b472;
+            --accent-glow: rgba(191, 161, 95, 0.15);
+            --text-main: #ffffff;
+            --text-muted: #9ca3af;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+
+        body, html {
+            background: url('bg1.png') no-repeat center center fixed;
+            background-size: cover;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(17, 17, 17, 0.5); z-index: -2; pointer-events: none;
+        }
+
+        /* Navbar */
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.2rem 4%; background: rgba(17, 17, 17, 0.6);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.6), 0 1px 15px rgba(191, 161, 95, 0.15);
+            border-bottom: 1px solid rgba(191, 161, 95, 0.2);
+        }
+
+        header::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.8;
+        }
+
+        .logo-container { display: flex; align-items: center; gap: 12px; text-decoration: none; transition: transform 0.2s ease; }
+        .logo-container:hover { transform: scale(1.02); }
+        .brand-logo { width: 44px; height: 44px; border-radius: 12px; border: 2px solid var(--accent); object-fit: cover; box-shadow: 0 0 12px var(--accent-glow), inset 0 0 5px rgba(0,0,0,0.5); background-color: #000; }
+        .logo-text { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-main); }
+        .logo-text span { color: var(--accent); }
+
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .nav-link { color: var(--text-muted); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.2s; }
+        .nav-link:hover { color: var(--text-main); }
+        .nav-link.account { display: flex; align-items: center; gap: 6px; color: var(--accent); }
+
+        .auth-btn {
+            background: transparent; border: 1px solid var(--accent); color: var(--accent);
+            padding: 0.5rem 1.2rem; border-radius: 20px; font-size: 0.85rem; font-weight: 500;
+            cursor: pointer; transition: all 0.2s; text-decoration: none;
+        }
+        .auth-btn:hover { background: rgba(191, 161, 95, 0.1); box-shadow: 0 0 15px var(--accent-glow); }
+
+        /* Hero Section */
+        .hero { text-align: center; padding: 5rem 2rem 3rem; max-width: 800px; margin: 0 auto; flex: 1; }
+        .hero h1 { font-size: 3.5rem; font-weight: 700; letter-spacing: -0.04em; margin-bottom: 1.2rem; color: #ffffff; }
+        .hero p { font-size: 1.1rem; color: var(--text-muted); line-height: 1.6; max-width: 650px; margin: 0 auto; }
+        .hero p strong { color: var(--text-main); font-weight: 600; }
+
+        /* Filters */
+        .filters { display: flex; justify-content: center; flex-wrap: wrap; gap: 0.8rem; margin-bottom: 3rem; padding: 0 2rem; }
+        .filter-btn {
+            background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--text-muted);
+            padding: 0.6rem 1.5rem; border-radius: 30px; font-size: 0.9rem; cursor: pointer;
+            transition: all 0.2s ease; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+        }
+        .filter-btn:hover { border-color: rgba(255, 255, 255, 0.2); color: var(--text-main); }
+        .filter-btn.active { background: rgba(191, 161, 95, 0.1); border-color: var(--accent); color: var(--accent); }
+
+        /* Grid Layout */
+        .tools-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; max-width: 1200px; margin: 0 auto; padding: 0 2rem 5rem; padding-bottom: 8rem; }
+
+        /* Cards */
+        .tool-card {
+            background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border); border-radius: 24px; padding: 2rem 1.5rem;
+            text-decoration: none; display: flex; flex-direction: column; gap: 1rem;
+            transition: all 0.3s ease; cursor: pointer; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        }
+        .tool-card:hover { transform: translateY(-5px); border-color: rgba(191, 161, 95, 0.4); box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.4), 0 0 20px var(--accent-glow); }
+        .icon-wrapper { width: 48px; height: 48px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 14px; display: flex; align-items: center; justify-content: center; color: var(--accent); margin-bottom: 0.5rem; }
+        .icon-wrapper svg { width: 24px; height: 24px; fill: currentColor; }
+        .tool-card h3 { color: var(--text-main); font-size: 1.1rem; font-weight: 600; }
+        .tool-card p { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; }
+        .tool-card.hidden { display: none; }
+
+        /* --- Chatbot Styles --- */
+        .chatbot-fab {
+            position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px;
+            background: linear-gradient(135deg, #2a2a2d 0%, #1a1a1c 100%);
+            border: 2px solid var(--accent); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.8rem; cursor: pointer; z-index: 1000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6), 0 0 20px var(--accent-glow);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .chatbot-fab:hover { transform: scale(1.1); box-shadow: 0 15px 35px rgba(0,0,0,0.8), 0 0 30px var(--accent-glow); }
+
+        .chatbot-window {
+            position: fixed; bottom: 100px; right: 30px; width: 380px; height: 600px;
+            background: rgba(15, 15, 17, 0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border); border-radius: 24px;
+            display: flex; flex-direction: column; z-index: 1000;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 30px rgba(191,161,95,0.1);
+            transform: translateY(20px); opacity: 0; visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
+        }
+        .chatbot-window.active { transform: translateY(0); opacity: 1; visibility: visible; }
+
+        .chatbot-header {
+            padding: 1.2rem 1.5rem; background: rgba(0,0,0,0.5);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .chatbot-title { display: flex; align-items: center; gap: 12px; }
+        .chatbot-avatar { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--accent); background: #000; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+        .chatbot-title h4 { font-size: 1rem; font-weight: 600; color: var(--text-main); margin-bottom: 2px; }
+        .chatbot-title p { font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+        .status-dot { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; box-shadow: 0 0 8px #4ade80; }
+        
+        .chatbot-close { background: transparent; border: none; color: var(--text-muted); cursor: pointer; transition: color 0.2s; }
+        .chatbot-close:hover { color: var(--text-main); }
+
+        .chatbot-messages { flex: 1; padding: 1.5rem; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem; }
+        .chatbot-messages::-webkit-scrollbar { width: 6px; }
+        .chatbot-messages::-webkit-scrollbar-thumb { background: rgba(191,161,95,0.3); border-radius: 10px; }
+
+        .chat-bubble { max-width: 85%; padding: 0.8rem 1rem; border-radius: 16px; font-size: 0.9rem; line-height: 1.5; word-wrap: break-word; }
+        .chat-ai { background: rgba(191, 161, 95, 0.1); border: 1px solid rgba(191, 161, 95, 0.2); color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 4px; }
+        .chat-user { background: linear-gradient(135deg, #2a2a2d 0%, #1a1a1c 100%); border: 1px solid var(--glass-border); color: var(--accent); align-self: flex-end; border-bottom-right-radius: 4px; }
+
+        .chatbot-presets { display: flex; gap: 8px; overflow-x: auto; padding: 12px 1.5rem; background: rgba(0,0,0,0.3); border-top: 1px solid var(--glass-border); scrollbar-width: none; }
+        .chatbot-presets::-webkit-scrollbar { display: none; }
+        .preset-chip { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: var(--text-main); padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; white-space: nowrap; cursor: pointer; transition: all 0.2s; }
+        .preset-chip:hover { background: rgba(191,161,95,0.15); border-color: var(--accent); color: var(--accent); transform: translateY(-1px); }
+
+        .chatbot-input-area { padding: 1rem 1.5rem; background: rgba(0,0,0,0.6); border-top: 1px solid var(--glass-border); display: flex; gap: 10px; align-items: center; }
+        .chatbot-input { flex: 1; background: rgba(0,0,0,0.5); border: 1px solid var(--glass-border); border-radius: 20px; padding: 0.8rem 1.2rem; color: var(--text-main); font-size: 0.9rem; outline: none; transition: all 0.2s; }
+        .chatbot-input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(191,161,95,0.1); }
+        .chatbot-send { background: var(--accent); color: #000; border: none; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; }
+        .chatbot-send:hover { background: var(--accent-hover); transform: scale(1.05); box-shadow: 0 0 15px var(--accent-glow); }
+        .chatbot-send svg { width: 18px; height: 18px; fill: currentColor; transform: translateX(1px); }
+        
+        .typing-indicator { display: none; padding: 0.8rem 1rem; align-self: flex-start; color: var(--text-muted); font-size: 0.85rem; font-style: italic; }
+        .typing-indicator.active { display: block; animation: pulseText 1.5s infinite; }
+
+        /* Footer */
+        .site-footer { width: 100%; padding: 4rem 2rem 2rem; border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(20px); opacity: 0; transform: translateY(20px); transition: all 0.8s ease; margin-top: auto; }
+        .site-footer.visible { opacity: 1; transform: translateY(0); }
+        .footer-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .footer-links a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--text-main); }
+        .footer-socials { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; }
+        .social-icon { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.3s; }
+        .social-icon svg { width: 18px; height: 18px; fill: currentColor; }
+        .social-icon:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 5px 15px var(--accent-glow); }
+        .footer-copy { color: #555; font-size: 0.75rem; }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .tools-grid { grid-template-columns: 1fr; padding: 0 1.5rem 4rem; }
+            .chatbot-window { width: 90vw; right: 5vw; bottom: 90px; height: 60vh; }
+        }
+
+        /* --- Preloader Styles --- */
+        #preloader { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: var(--bg-dark); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s ease, visibility 0.5s ease; gap: 1.5rem; }
+        .loader-ring { width: 60px; height: 60px; border: 3px solid rgba(191, 161, 95, 0.1); border-radius: 50%; border-top-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); animation: spinLoader 1s linear infinite; }
+        .loader-text { font-size: 1rem; font-weight: 500; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; text-shadow: 0 0 10px var(--accent-glow); animation: pulseText 1.5s ease-in-out infinite alternate; }
+        @keyframes spinLoader { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulseText { from { opacity: 0.5; } to { opacity: 1; } }
+        #preloader.fade-out { opacity: 0; visibility: hidden; }
+    </style>
+</head>
+<body>
+
+    <div id="preloader">
+        <div class="loader-ring"></div>
+        <div class="loader-text">Hikaru Labs</div>
+    </div>
+
+    <header>
+        <a href="browse.html" class="logo-container">
+            <img src="logo.png" alt="Hikaru Labs Logo" class="brand-logo" onerror="this.src='https://i.postimg.cc/7LRMnvPK/Untitled-design-(1).png'" />
+            <div class="logo-text">Hikaru <span>Labs</span></div>
+        </a>
+        <nav class="nav-links">
+            <a href="account.html" class="nav-link account">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                <span id="nav-user-name">Account</span>
+            </a>
+            <button class="auth-btn" id="logout-btn">Log Out</button>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <h1>Edit fast, good, private.</h1>
+        <p>Edit images directly in your browser, do faster, better and safer edits with <strong>Hikaru Labs</strong>.</p>
+    </section>
+
+    <div class="filters">
+        <button class="filter-btn active" data-filter="all">All Tools</button>
+        <button class="filter-btn" data-filter="optimize">Optimize</button>
+        <button class="filter-btn" data-filter="edit">Edit</button>
+        <button class="filter-btn" data-filter="convert">Convert</button>
+        <button class="filter-btn" data-filter="security">Security</button>
+    </div>
+
+    <div class="tools-grid" id="grid">
+        
+        <a href="compress.html" class="tool-card" data-category="optimize">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M4 12l4-4v3h8V8l4 4-4 4v-3H8v3L4 12zM2 4h20v2H2V4zm0 14h20v2H2v-2z"/></svg>
+            </div>
+            <h3>Compress Image</h3>
+            <p>Reduce file size for JPG, PNG, and WEBP while maintaining maximum visual quality.</p>
+        </a>
+
+        <a href="resize.html" class="tool-card" data-category="edit">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V1H5v4H1v2h4v10c0 1.1.9 2 2 2h10v4h2v-4h4v-2H7z"/></svg>
+            </div>
+            <h3>Resize & Crop Image</h3>
+            <p>Define exact dimensions in pixels or use presets for social media.</p>
+        </a>
+
+        <a href="file.html" class="tool-card" data-category="convert">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm-2 14v-3h-4v-2h4V8l5 4.5-5 4.5z"/></svg>
+            </div>
+            <h3>Convert Format</h3>
+            <p>Turn PNG, WEBP, or bulk archives into standard JPGs (ISO 10918) instantly.</p>
+        </a>
+
+        <a href="exif.html" class="tool-card" data-category="security">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/></svg>
+            </div>
+            <h3>Remove Metadata (EXIF)</h3>
+            <p>Scrub hidden GPS location info, camera data, and tracking tags from your photos securely.</p>
+        </a>
+
+        <a href="blur.html" class="tool-card" data-category="security">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            </div>
+            <h3>Face & Area Blur</h3>
+            <p>Click and drag to redact sensitive areas, text, or faces securely before sharing.</p>
+        </a>
+
+        <a href="watermark.html" class="tool-card" data-category="edit">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M19 8h-2V3H7v5H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zM9 5h6v3H9V5zm8 14H7v-4h10v4zm2-6c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/></svg>
+            </div>
+            <h3>Watermark Image</h3>
+            <p>Stamp your images with custom text or copyright marks in bulk to protect your work.</p>
+        </a>
+
+        <a href="passport.html" class="tool-card" data-category="edit">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm5 12H7v-1.5c0-2.33 4.67-3.5 7-3.5s7 1.17 7 3.5V18z"/></svg>
+            </div>
+            <h3>Passport Print Page</h3>
+            <p>Auto-generate an A4 sheet with grid-aligned standard biometric passport photos.</p>
+        </a>
+
+        <a href="flim.html" class="tool-card" data-category="edit">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>
+            </div>
+            <h3>Film Scanner Fix</h3>
+            <p>Digitally invert 32-bit negatives and clean up dust/noise from scanned analog film.</p>
+        </a>
+
+        <a href="rename.html" class="tool-card" data-category="optimize">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            </div>
+            <h3>Rename Files</h3>
+            <p>Apply bulk prefixes, suffixes, or custom naming structures to a large batch of images.</p>
+        </a>
+
+        <a href="rotate.html" class="tool-card" data-category="edit">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5h2c0 1.66 1.34 3 3 3s3-1.34 3-3-1.34-3-3-3v3l-4.55-4.45L15.55 5.55z"/></svg>
+            </div>
+            <h3>Rotate & Turn</h3>
+            <p>Rotate pictures 90 degrees right/left, or turn them 180 degrees upside down.</p>
+        </a>
+
+        <a href="AIO.html" class="tool-card" data-category="edit">
+            <div class="icon-wrapper">
+                <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+            </div>
+            <h3>Hikaru Studio (AIO)</h3>
+            <p>Launch the all-in-one workspace to chain multiple non-destructive edits sequentially.</p>
+        </a>
+
+    </div>
+
+    <button id="chatbot-fab" class="chatbot-fab">
+        <span>🦚</span>
+    </button>
+
+    <div id="chatbot-window" class="chatbot-window">
+        <div class="chatbot-header">
+            <div class="chatbot-title">
+                <div class="chatbot-avatar">🦚</div>
+                <div>
+                    <h4>Peacock Ai</h4>
+                    <p><span class="status-dot"></span> Online</p>
+                </div>
+            </div>
+            <button id="chatbot-close" class="chatbot-close">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+        
+        <div id="chatbot-messages" class="chatbot-messages">
+            <div class="chat-bubble chat-ai">Hello! I'm Peacock Ai. How can I help you with our local-first tools or plans today?</div>
+            <div id="typing-indicator" class="typing-indicator">Peacock Ai is thinking...</div>
+        </div>
+        
+        <div class="chatbot-presets" id="chatbot-presets">
+            <button class="preset-chip">How does Smart Compress work?</button>
+            <button class="preset-chip">How do I resize & crop?</button>
+            <button class="preset-chip">What formats can I convert to?</button>
+            <button class="preset-chip">What metadata does Data Shield scrub?</button>
+            <button class="preset-chip">How secure is Face Blur?</button>
+            <button class="preset-chip">How do I add a watermark?</button>
+            <button class="preset-chip">What passport sizes are supported?</button>
+            <button class="preset-chip">How does the film scanner fix work?</button>
+            <button class="preset-chip">How does bulk rename numbering work?</button>
+            <button class="preset-chip">Can I flip multiple images at once?</button>
+            <button class="preset-chip">What is the Hikaru Studio AIO?</button>
+        </div>
+
+        <div class="chatbot-input-area">
+            <input type="text" id="chatbot-input" class="chatbot-input" placeholder="Ask about tools or pricing...">
+            <button id="chatbot-send" class="chatbot-send">
+                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <footer class="site-footer" id="site-footer">
+        <div class="footer-links">
+            <a href="story.html">Our Story</a>
+            <a href="Privacy Policy.pdf" target="_blank">Privacy Policy</a>
+            <a href="Terms & Condition.pdf" target="_blank">Terms & Conditions</a>
+            <a href="mailto:aksh@hikarulabs.xyz">Contact Us</a>
+        </div>
+        <div class="footer-socials">
+            <a href="https://www.instagram.com/hikarulabs/" target="_blank" class="social-icon" aria-label="Instagram">
+                <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            </a>
+            <a href="https://www.linkedin.com/company/hikaru-labs/" target="_blank" class="social-icon" aria-label="LinkedIn">
+                <svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            </a>
+            <a href="https://x.com/Hikaru_Labs" target="_blank" class="social-icon" aria-label="X">
+                <svg viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+            </a>
+        </div>
+        <p class="footer-copy">© 2026 Hikaru Labs. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // --- Preloader Removal ---
+        window.addEventListener('load', () => {
+            const preloader = document.getElementById('preloader');
+            if(preloader) preloader.classList.add('fade-out');
+        });
+
+        // --- Firebase Config ---
+        const firebaseConfig = {
+            apiKey: "insert api key",
+            authDomain: "hikaru-auth.firebaseapp.com",
+            projectId: "hikaru-auth",
+            storageBucket: "hikaru-auth.firebasestorage.app",
+            messagingSenderId: "906310702181",
+            appId: "1:906310702181:web:16ec0e0b5cff635854a28c",
+            measurementId: "G-4MSLFECF5S"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // --- Custom Fast Encryption Engine ---
+        const CIPHER_KEY = "HIKARU_LOCAL_FIRST";
+        
+        function hikaruDecrypt(base64Str) {
+            try {
+                let text = atob(base64Str);
+                let result = "";
+                for(let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ CIPHER_KEY.charCodeAt(i % CIPHER_KEY.length));
+                }
+                return JSON.parse(result);
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // --- Session Handoff & Validation ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('sess_token');
+            const storedToken = sessionStorage.getItem('hikaru_token');
+            const activeToken = urlToken || storedToken;
+            let activeSession = null;
+
+            if (activeToken) activeSession = hikaruDecrypt(activeToken);
+
+            if (activeSession) {
+                if (urlToken) {
+                    sessionStorage.setItem('hikaru_token', urlToken);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                document.getElementById('nav-user-name').textContent = activeSession.name;
+
+                // --- GUEST SECURITY INTERCEPTION ---
+                if (activeSession.isGuest) {
+                    const accountLink = document.querySelector('.nav-link.account');
+                    accountLink.href = "#"; // Disable actual routing
+                    
+                    accountLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        alert("Guest accounts cannot access account settings. Redirecting to sign in.");
+                        window.location.href = "sign.html";
+                    });
+
+                    // Modify visual cues
+                    const logoutBtn = document.getElementById('logout-btn');
+                    logoutBtn.textContent = "Sign In / Sign Up";
+                }
+
+            } else {
+                auth.onAuthStateChanged(user => {
+                    if (!user) window.location.href = "sign.html";
+                });
+            }
+
+            // --- Logout Logic ---
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                sessionStorage.removeItem('hikaru_token');
+                auth.signOut().then(() => {
+                    window.location.href = "sign.html";
+                });
+            });
+
+            // --- Grid Filters Logic ---
+            const filterBtns = document.querySelectorAll('.filter-btn');
+            const toolCards = document.querySelectorAll('.tool-card');
+
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+
+                    const filterValue = btn.getAttribute('data-filter');
+                    toolCards.forEach(card => {
+                        if (filterValue === 'all' || card.getAttribute('data-category') === filterValue) card.classList.remove('hidden');
+                        else card.classList.add('hidden');
+                    });
+                });
+            });
+
+            // --- Footer Reveal Observer ---
+            const footerObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) document.getElementById('site-footer').classList.add('visible');
+                });
+            }, { threshold: 0.1 });
+            
+            footerObserver.observe(document.getElementById('site-footer'));
+            
+            // ==========================================
+            // HIKARU AI CHATBOT LOGIC (PEACOCK AI)
+            // ==========================================
+            const AI_API_KEY = ""; 
+            const chatFab = document.getElementById('chatbot-fab');
+            const chatWindow = document.getElementById('chatbot-window');
+            const chatClose = document.getElementById('chatbot-close');
+            const chatMessages = document.getElementById('chatbot-messages');
+            const chatInput = document.getElementById('chatbot-input');
+            const chatSendBtn = document.getElementById('chatbot-send');
+            const typingIndicator = document.getElementById('typing-indicator');
+            const presetChips = document.querySelectorAll('.preset-chip');
+            
+            let chatHistory = [];
+
+            const systemContext = `You are Peacock Ai, the official AI support bot for Hikaru Labs. 
+            Hikaru Labs provides 100% local, browser-based image and file processing tools. 
+            Features: Compress, Resize & Crop, Convert Format, Remove EXIF, Watermark, Passport Print Page, Film Scanner Fix, Rename Files, Rotate & Turn, Face & Area Blur, and the AIO Studio. 
+            Core Value: Files are NEVER uploaded to servers, ensuring complete privacy and fast speeds.`;
+
+            const localFallbackResponses = {
+                "How does Smart Compress work?": "Smart Compress uses local Web Assembly to reduce file size without sending your images to a server.",
+                "How do I resize & crop?": "Open the Resize tool, drag the bounding box on the canvas to crop, and enter your target width and height in the sidebar.",
+                "What formats can I convert to?": "You can securely convert any standard image (or a whole ZIP file of images) into highly optimized JPEG, transparent PNG, or modern WEBP formats.",
+                "What metadata does Data Shield scrub?": "The Data Shield permanently deletes hidden GPS coordinates, camera Make/Model fingerprints, exposure settings, and exact creation timestamps from your JPEGs.",
+                "How secure is Face Blur?": "100% secure. Because Hikaru Labs operates entirely locally, your sensitive photos never leave your device.",
+                "How do I add a watermark?": "Open the Watermark tool, type your text in the sidebar, and adjust the size slider.",
+                "What passport sizes are supported?": "We currently support standard EU/UK/IN sizing (35x45mm) and US standard sizing (2x2 inch / 51x51mm).",
+                "How does the film scanner fix work?": "It mathematically inverts the 32-bit negative colors and uses a smart 'Auto-Levels' algorithm.",
+                "How does bulk rename numbering work?": "Just type a prefix, check 'Append Numbers', and set your padding.",
+                "Can I flip multiple images at once?": "Yes! Set your rotation angle or flip state in the sidebar, check 'Apply to all remaining', and hit Process.",
+                "What is the Hikaru Studio AIO?": "The AIO (All-in-One) Studio is our master workspace. It allows you to chain non-destructive edits together locally."
+            };
+
+            function toggleChat() { chatWindow.classList.toggle('active'); }
+            chatFab.addEventListener('click', toggleChat);
+            chatClose.addEventListener('click', toggleChat);
+
+            function addMessage(text, isUser = false) {
+                const bubble = document.createElement('div');
+                bubble.className = `chat-bubble ${isUser ? 'chat-user' : 'chat-ai'}`;
+                bubble.textContent = text;
+                
+                chatMessages.insertBefore(bubble, typingIndicator);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                chatHistory.push({
+                    "role": isUser ? "user" : "model",
+                    "parts": [{"text": text}]
+                });
+            }
+
+            async function fetchAIResponse(userText) {
+                typingIndicator.classList.add('active');
+                if (!AI_API_KEY || AI_API_KEY === "" || AI_API_KEY.includes("INSERT")) {
+                    setTimeout(() => {
+                        const matchedResponse = localFallbackResponses[userText];
+                        if (matchedResponse) addMessage(matchedResponse, false);
+                        else addMessage("API Key is not configured. Please add your Gemini API key to the source code to enable live responses!", false);
+                        typingIndicator.classList.remove('active');
+                    }, 800); 
+                    return;
+                }
+
+                const requestPayload = { "system_instruction": { "parts": [{"text": systemContext}] }, "contents": chatHistory };
+
+                try {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${AI_API_KEY}`, {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestPayload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    const data = await response.json();
+                    if (data.candidates && data.candidates.length > 0) addMessage(data.candidates[0].content.parts[0].text, false);
+                    else addMessage("I'm having trouble connecting to my brain right now.", false);
+                } catch (error) {
+                    addMessage("Oops! My connection was interrupted.", false);
+                } finally {
+                    typingIndicator.classList.remove('active');
+                }
+            }
+
+            function handleSend(forceText = null) {
+                const text = forceText || chatInput.value.trim();
+                if (!text) return;
+                chatInput.value = ''; addMessage(text, true); fetchAIResponse(text);
+            }
+
+            chatSendBtn.addEventListener('click', () => handleSend());
+            chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
+            presetChips.forEach(chip => { chip.addEventListener('click', () => { handleSend(chip.textContent); }); });
+        });
+    </script>
+</body>
+</html>

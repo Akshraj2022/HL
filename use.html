@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onboarding - Hikaru Labs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="google-adsense-account" content="ca-pub-2865389325309773">
+    <style>
+        :root {
+            --bg-base: #000000;
+            --bg-surface: #0a0a0a;
+            --bg-hover: #141414;
+            --border-subtle: #222222;
+            --text-primary: #ededed;
+            --text-secondary: #888888;
+            --accent-brand: #bfa15f;
+            --accent-glow: rgba(191, 161, 95, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body, html {
+            background-color: var(--bg-base); 
+            color: var(--text-primary);
+            overflow-x: hidden;
+            overflow-y: auto; 
+        }
+
+        .main-content {
+            display: flex; width: 100vw; height: 100vh; z-index: 2; background: var(--bg-base);
+        }
+
+        .brand-header {
+            position: absolute; top: 2.5rem; left: 8%; display: flex; align-items: center; gap: 12px; z-index: 10;
+        }
+        .brand-logo { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border-subtle); object-fit: cover; }
+        .brand-text { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
+        .brand-text span { color: var(--accent-brand); }
+
+        .left-panel {
+            flex: 1; background-image: url('background.png'); background-size: cover; background-position: center;
+            background-repeat: no-repeat; display: flex; flex-direction: column; justify-content: center;
+            padding: 7rem 8% 4rem; gap: 2rem; position: relative; overflow-y: auto;
+        }
+        .left-panel::-webkit-scrollbar { display: none; }
+        .left-panel { -ms-overflow-style: none; scrollbar-width: none; }
+        .left-panel::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(90deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 100%); z-index: 1;
+        }
+
+        .standards-title { position: relative; z-index: 2; color: var(--accent-brand); font-size: 0.8rem; font-weight: 600; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: -0.5rem; }
+        .stat-block { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 0.35rem; }
+        .stat-block h2 { color: #ffffff; font-size: 1.2rem; font-weight: 600; letter-spacing: -0.02em; }
+        .stat-block p { color: var(--text-secondary); font-size: 0.85rem; font-weight: 400; line-height: 1.5; max-width: 95%; }
+
+        .right-panel {
+            flex: 1; background-color: var(--bg-surface); display: flex; align-items: center; justify-content: center;
+            padding: 4rem 2rem; border-left: 1px solid var(--border-subtle);
+        }
+
+        .form-wrapper { width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: flex-start; }
+        .form-wrapper h1 { color: var(--text-primary); font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+        .form-wrapper p.subtitle { color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 2.5rem; }
+        
+        .input-group { width: 100%; margin-bottom: 1.5rem; }
+        .input-label { display: block; color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; margin-bottom: 0.5rem; }
+        .input-field {
+            width: 100%; background-color: var(--bg-base); border: 1px solid var(--border-subtle); border-radius: 8px; 
+            padding: 1rem 1.2rem; color: var(--text-primary); font-size: 0.95rem; outline: none; transition: all 0.2s ease;
+        }
+        .input-field::placeholder { color: #52525b; font-weight: 400; }
+        .input-field:focus { border-color: var(--text-secondary); box-shadow: 0 0 0 1px var(--text-secondary); }
+
+        .continue-btn {
+            width: 100%; background-color: #ffffff; border: 1px solid #ffffff; border-radius: 8px; padding: 1rem 1.2rem;
+            color: #000000; font-size: 0.95rem; font-weight: 600; margin-top: 1rem; cursor: pointer; transition: all 0.2s ease;
+        }
+        .continue-btn:hover:not(:disabled) { background-color: #e0e0e0; }
+        .continue-btn:active:not(:disabled) { transform: scale(0.98); }
+
+        .site-footer { width: 100%; padding: 4rem 2rem 2rem; border-top: 1px solid var(--border-subtle); text-align: center; background: var(--bg-base); }
+        .footer-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .footer-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--text-primary); }
+        .footer-socials { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; }
+        .social-icon { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: center; color: var(--text-secondary); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .social-icon svg { width: 18px; height: 18px; fill: currentColor; }
+        .social-icon:hover { color: var(--accent-brand); border-color: var(--accent-brand); transform: translateY(-3px); box-shadow: 0 5px 15px var(--accent-glow); }
+        .footer-copy { color: #555; font-size: 0.75rem; }
+
+        @media (max-width: 900px) {
+            .main-content { flex-direction: column; height: auto; min-height: 100vh; }
+            .brand-header { top: 1.5rem; left: 5%; }
+            .left-panel { padding: 7rem 5% 4rem; }
+            .right-panel { border-left: none; border-top: 1px solid var(--border-subtle); padding: 4rem 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-content">
+        <div class="brand-header">
+            <img src="icon.png" alt="Hikaru Labs Logo" class="brand-logo" onerror="this.src='https://i.postimg.cc/7LRMnvPK/Untitled-design-(1).png'" />
+            <div class="brand-text">Hikaru <span>Labs</span></div>
+        </div>
+
+        <div class="left-panel">
+            <h1 class="standards-title">Enterprise Standards</h1>
+            <div class="stat-block">
+                <h2>ISO/IEC 10918 (JPEG Compression)*</h2>
+                <p>The engine utilizes the native browser encoding matrix to generate standard JPEG outputs.</p>
+            </div>
+            <div class="stat-block">
+                <h2>ISO/IEC 15948 (PNG Data)*</h2>
+                <p>The engine correctly outputs lossless PNG formats directly through the local Canvas API.</p>
+            </div>
+            <div class="stat-block">
+                <h2>ISO/IEC 19794-5 (Biometric Strict Mode)</h2>
+                <p>Strictly enforces the 35x45mm facial aspect ratio and center-crop geometry required for official passport print sheets.</p>
+            </div>
+            <div class="stat-block">
+                <h2>ISO/IEC 27001 (InfoSec Management)*</h2>
+                <p>Utilizing a "local-first" architecture, user files are never uploaded to a remote server, bypassing standard cloud data-breach vulnerabilities.</p>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <div class="form-wrapper">
+                <h1 id="welcome-text">Welcome to Hikaru Labs</h1>
+                <p class="subtitle">Let's set up your workspace environment.</p>
+                
+                <div class="input-group">
+                    <label class="input-label" for="role-input">What is your role?</label>
+                    <input type="text" id="role-input" class="input-field" placeholder="e.g. Developer, Photographer, Student" />
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label" for="usecase-input">Primary use case?</label>
+                    <input type="text" id="usecase-input" class="input-field" placeholder="e.g. Bulk processing, Image compression" />
+                </div>
+                
+                <button class="continue-btn" id="save-btn">Enter Workspace</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        <div class="footer-links">
+            <a href="story.html">Our Story</a>
+            <a href="Privacy Policy.pdf" target="_blank">Privacy Policy</a>
+            <a href="Terms & Condition.pdf" target="_blank">Terms & Conditions</a>
+            <a href="mailto:aksh@hikarulabs.xyz">Contact Us</a>
+        </div>
+        <div class="footer-socials">
+            <a href="https://www.instagram.com/hikarulabs/" target="_blank" class="social-icon" aria-label="Instagram">
+                <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            </a>
+            <a href="https://www.linkedin.com/company/hikaru-labs/" target="_blank" class="social-icon" aria-label="LinkedIn">
+                <svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            </a>
+            <a href="https://x.com/Hikaru_Labs" target="_blank" class="social-icon" aria-label="X">
+                <svg viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+            </a>
+        </div>
+        <p class="footer-copy">© 2026 Hikaru Labs. All rights reserved.</p>
+    </footer>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSVt_JqH2vsqFLuT5xDOQQUyxU11QMKak",
+            authDomain: "hikaru-auth.firebaseapp.com",
+            projectId: "hikaru-auth",
+            storageBucket: "hikaru-auth.firebasestorage.app",
+            messagingSenderId: "906310702181",
+            appId: "1:906310702181:web:16ec0e0b5cff635854a28c",
+            measurementId: "G-4MSLFECF5S"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- Decryption Engine ---
+        const CIPHER_KEY = "HIKARU_LOCAL_FIRST";
+        function hikaruDecrypt(base64Str) {
+            try {
+                let text = atob(base64Str);
+                let result = "";
+                for(let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ CIPHER_KEY.charCodeAt(i % CIPHER_KEY.length));
+                }
+                return JSON.parse(result);
+            } catch (e) { return null; }
+        }
+
+        // --- Session Verification ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlToken = urlParams.get('sess_token');
+        const storedToken = sessionStorage.getItem('hikaru_token');
+        const activeToken = urlToken || storedToken;
+        let activeSession = null;
+
+        // Immediate redirection check
+        async function checkOnboarding(uid, fallbackToken) {
+            try {
+                const doc = await db.collection('users').doc(uid).get();
+                if (doc.exists && doc.data().onboardingCompleted) {
+                    window.location.href = "browse.html?sess_token=" + encodeURIComponent(fallbackToken);
+                }
+            } catch(e) { console.error("Validation error:", e); }
+        }
+
+        if (activeToken) {
+            activeSession = hikaruDecrypt(activeToken);
+            if(activeSession) {
+                if (urlToken) sessionStorage.setItem('hikaru_token', urlToken);
+                document.getElementById('welcome-text').textContent = `Welcome, ${activeSession.name}`;
+                checkOnboarding(activeSession.uid, activeToken);
+            }
+        } else {
+            auth.onAuthStateChanged((user) => {
+                if (!user && !activeSession) {
+                    window.location.href = "sign.html"; 
+                } else if (user && !activeSession) {
+                    activeSession = { uid: user.uid, email: user.email, name: user.displayName || user.email.split('@')[0] };
+                    document.getElementById('welcome-text').textContent = `Welcome, ${activeSession.name}`;
+                    
+                    // Generate temp token for passing via auth listener
+                    const tempToken = btoa(JSON.stringify(activeSession)); // Simple base64 for fallback
+                    checkOnboarding(user.uid, tempToken);
+                }
+            });
+        }
+
+        // --- Save Setup & Redirect ---
+        const saveBtn = document.getElementById('save-btn');
+        
+        saveBtn.addEventListener('click', async () => {
+            const role = document.getElementById('role-input').value.trim();
+            const useCase = document.getElementById('usecase-input').value.trim();
+            const targetUid = activeSession ? activeSession.uid : (auth.currentUser ? auth.currentUser.uid : null);
+            const tokenToPass = sessionStorage.getItem('hikaru_token') || "";
+
+            if(!role || !useCase) {
+                alert("Please fill in both fields so we can optimize your experience.");
+                return;
+            }
+            if (!targetUid) {
+                window.location.href = "sign.html";
+                return;
+            }
+
+            saveBtn.textContent = "Setting up...";
+            saveBtn.disabled = true;
+            
+            try {
+                await db.collection('users').doc(targetUid).set({
+                    role: role,
+                    useCase: useCase,
+                    onboardingCompleted: true
+                }, { merge: true });
+                
+                window.location.href = "browse.html?sess_token=" + encodeURIComponent(tokenToPass);
+            } catch (error) {
+                alert("Failed to save details: " + error.message);
+                saveBtn.textContent = "Enter Workspace";
+                saveBtn.disabled = false;
+            }
+        });
+
+        document.getElementById('usecase-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') saveBtn.click();
+        });
+    </script>
+</body>
+</html>

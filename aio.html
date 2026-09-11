@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hikaru Studio AIO</title>
+    <meta name="google-adsense-account" content="ca-pub-2865389325309773">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.min.js"></script>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            /* Premium Studio Dark Theme */
+            --bg-dark: #0e0e10;
+            --panel-bg: rgba(24, 25, 27, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.06); 
+            --accent: #bfa15f;
+            --accent-hover: #d4b472;
+            --accent-glow: rgba(191, 161, 95, 0.25);
+            --safe: #4ade80;
+            --error: #ef4444;
+            --text-main: #f3f3f4;
+            --text-muted: #a1a1aa;
+            --input-bg: rgba(255, 255, 255, 0.04);
+            
+            /* Dimensions */
+            --header-height: 64px;
+            --toolbar-width: 84px;
+            --sidebar-width: 340px;
+            --queue-height: 90px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+
+        body, html {
+            background: url('bg12.png') no-repeat center center fixed;
+            background-size: cover;
+            background-color: var(--bg-dark); 
+            color: var(--text-main);
+            min-height: 100vh; overflow-x: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(10, 10, 12, 0.85); z-index: -2; pointer-events: none;
+        }
+
+        #star-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
+
+        /* --- Layout Grid --- */
+        #studio-app {
+            display: grid;
+            grid-template-columns: var(--toolbar-width) 1fr var(--sidebar-width);
+            grid-template-rows: var(--header-height) 1fr var(--queue-height);
+            height: 100vh; width: 100vw; flex-shrink: 0;
+        }
+
+        /* --- Header --- */
+        header {
+            grid-column: 1 / 4; grid-row: 1 / 2;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0 1.5rem; background: var(--panel-bg);
+            border-bottom: 1px solid var(--glass-border); z-index: 100;
+            backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+        }
+        
+        .logo-container { display: flex; align-items: center; gap: 12px; text-decoration: none; cursor: pointer; }
+        .brand-logo { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--accent); object-fit: cover; box-shadow: 0 0 12px var(--accent-glow); background-color: #000; }
+        .logo-text { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-main); }
+        .logo-text span { color: var(--accent); }
+
+        .header-actions { display: flex; gap: 1rem; align-items: center; }
+
+        /* --- Left Toolbar --- */
+        #left-toolbar {
+            grid-column: 1 / 2; grid-row: 2 / 3;
+            background: var(--panel-bg); border-right: 1px solid var(--glass-border);
+            display: flex; flex-direction: column; align-items: center; padding: 1.5rem 0; gap: 0.5rem;
+            z-index: 50; overflow-y: auto; backdrop-filter: blur(40px);
+        }
+        #left-toolbar::-webkit-scrollbar { display: none; }
+
+        .tool-btn {
+            width: 64px; height: 60px; border-radius: 12px; border: none;
+            background: transparent; color: var(--text-muted); cursor: pointer;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .tool-btn svg { width: 22px; height: 22px; transition: transform 0.2s; }
+        .tool-btn span { font-size: 0.65rem; font-weight: 500; letter-spacing: 0.02em; }
+        .tool-btn:hover { background: rgba(255,255,255,0.04); color: var(--text-main); }
+        .tool-btn.active { background: rgba(191,161,95,0.1); color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); border-radius: 8px; }
+        .tool-btn.active svg { filter: drop-shadow(0 0 5px var(--accent-glow)); }
+
+        /* --- Central Workspace --- */
+        #workspace {
+            grid-column: 2 / 3; grid-row: 2 / 3;
+            position: relative; display: flex; justify-content: center; align-items: center;
+            overflow: hidden; padding: 2rem;
+        }
+        #workspace-bg {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px);
+            background-size: 24px 24px; opacity: 0.8; z-index: 1; pointer-events: none;
+        }
+
+        .canvas-container { position: relative; z-index: 10; box-shadow: 0 25px 60px rgba(0,0,0,0.9); max-height: 100%; max-width: 100%; display: none; border-radius: 8px; overflow: hidden; }
+        .canvas-container.active { display: block; animation: floatIn 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes floatIn { from { opacity:0; transform: scale(0.97) translateY(10px); } to { opacity:1; transform: scale(1) translateY(0); } }
+        
+        canvas#main-canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; background: #111; }
+
+        /* --- Right Sidebar (Inspector) --- */
+        #right-sidebar {
+            grid-column: 3 / 4; grid-row: 2 / 4;
+            background: var(--panel-bg); border-left: 1px solid var(--glass-border);
+            padding: 2rem 1.5rem; overflow-y: auto; z-index: 50;
+            display: flex; flex-direction: column; gap: 1.5rem; backdrop-filter: blur(40px);
+        }
+        #right-sidebar::-webkit-scrollbar { width: 6px; }
+        #right-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+        .prop-panel { display: none; flex-direction: column; gap: 1.5rem; animation: fade In 0.3s; }
+        .prop-panel.active { display: flex; }
+        
+        .panel-title { font-size: 1.15rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px; }
+        .panel-title svg { color: var(--accent); width: 20px; height: 20px; }
+
+        .control-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .control-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        
+        .flat-input, .flat-select {
+            background: var(--input-bg); border: 1px solid transparent; border-bottom: 2px solid rgba(255,255,255,0.1);
+            border-radius: 8px 8px 0 0; color: var(--text-main); padding: 0.8rem 1rem; 
+            font-size: 0.95rem; outline: none; transition: all 0.2s; width: 100%;
+        }
+        .flat-input:focus, .flat-select:focus { background: rgba(255,255,255,0.08); border-bottom-color: var(--accent); }
+        .flat-input::placeholder { color: rgba(255,255,255,0.3); }
+        .flat-select { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23a1a1aa%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); background-repeat: no-repeat; background-position: right 1rem top 50%; background-size: 0.65rem auto; }
+        .flat-select option { background: var(--bg-dark); color: var(--text-main); }
+
+        .slider-row { display: flex; align-items: center; gap: 1rem; background: var(--input-bg); padding: 0.5rem 1rem; border-radius: 8px; }
+        input[type=range] { flex: 1; -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%; background: var(--accent); cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px var(--accent-glow); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; }
+        .slider-val { font-size: 0.85rem; font-family: monospace; color: var(--accent); min-width: 40px; text-align: right; font-weight: 600;}
+
+        /* Quick Action Buttons */
+        .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
+        .action-box { background: rgba(191, 161, 95, 0.05); border: 1px solid rgba(191, 161, 95, 0.2); color: var(--text-main); padding: 0.8rem; border-radius: 12px; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.2s; display: flex; justify-content: center; align-items: center; gap: 8px; }
+        .action-box:hover { background: rgba(191, 161, 95, 0.15); border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(191,161,95,0.1); }
+        .action-box svg { color: var(--accent); }
+        .action-box.danger { border-color: rgba(239, 68, 68, 0.2); }
+        .action-box.danger:hover { border-color: var(--error); background: rgba(239, 68, 68, 0.1); }
+        .action-box.danger svg { color: var(--error); }
+
+        .toggle-row { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1rem; background: var(--input-bg); border-radius: 8px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+        .toggle-row:hover { background: rgba(255,255,255,0.06); }
+        .toggle-text { font-size: 0.9rem; font-weight: 500; color: var(--text-main); }
+        .switch { position: relative; display: inline-block; width: 40px; height: 22px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .3s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: #fff; transition: .3s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(18px); background-color: #000; }
+
+        /* --- Bottom Queue (Asset Tray) --- */
+        #bottom-queue {
+            grid-column: 1 / 3; grid-row: 3 / 4;
+            background: var(--panel-bg); border-top: 1px solid var(--glass-border);
+            display: flex; align-items: center; padding: 0 1.5rem; gap: 0.8rem;
+            overflow-x: auto; overflow-y: hidden; z-index: 50; white-space: nowrap; backdrop-filter: blur(40px);
+        }
+        #bottom-queue::-webkit-scrollbar { height: 6px; }
+        #bottom-queue::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+        .queue-item {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(0,0,0,0.5); border: 1px solid transparent;
+            padding: 0.5rem 1rem; border-radius: 30px; cursor: pointer;
+            transition: all 0.2s; min-width: 150px; max-width: 220px;
+        }
+        .queue-item:hover { background: rgba(255,255,255,0.05); }
+        .queue-item.active { border-color: var(--accent); background: rgba(191,161,95,0.1); box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .badge { background: var(--accent); color: #000; font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 12px; }
+        .q-name { font-size: 0.85rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Buttons */
+        .btn { background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 0.6rem 1.2rem; border-radius: 8px; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .btn:hover { background: rgba(255,255,255,0.1); }
+        .btn-primary { background: var(--accent); color: #000; border: none; font-weight: 600; box-shadow: 0 4px 15px rgba(191,161,95,0.2); }
+        .btn-primary:hover { background: var(--accent-hover); box-shadow: 0 6px 20px rgba(191,161,95,0.4); transform: translateY(-1px); }
+        .btn:disabled, .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* --- Kinetic Studio Animations --- */
+        #preloader, #apply-overlay {
+            position: fixed; inset: 0; background: rgba(10,10,12,0.9); z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            backdrop-filter: blur(15px); transition: opacity 0.5s ease, visibility 0.5s ease;
+        }
+        #apply-overlay { display: none; z-index: 999; }
+        #apply-overlay.active { display: flex; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .kinetic-loader { width: 80px; height: 80px; position: relative; margin-bottom: 1.5rem; }
+        .kinetic-loader::before, .kinetic-loader::after {
+            content: ''; position: absolute; inset: 0; border-radius: 50%;
+            border: 4px solid transparent; border-top-color: var(--accent);
+            animation: spinKinetic 1.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+        .kinetic-loader::after { border-top-color: rgba(191,161,95,0.4); animation-delay: 0.2s; animation-direction: reverse; border-width: 2px; inset: 10px; }
+        @keyframes spinKinetic { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .progress-box { background: var(--panel-bg); padding: 2.5rem; border-radius: 20px; border: 1px solid var(--glass-border); text-align: center; box-shadow: 0 25px 50px rgba(0,0,0,0.5); }
+        .progress-bar { width: 300px; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; margin-top: 1.5rem; overflow: hidden; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.1s; box-shadow: 0 0 10px var(--accent-glow); }
+
+        #upload-placeholder {
+            position: absolute; inset: 2rem; border: 2px dashed rgba(191,161,95,0.3); border-radius: 24px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1rem;
+            background: rgba(0,0,0,0.4); cursor: pointer; z-index: 20; transition: all 0.3s; backdrop-filter: blur(10px);
+        }
+        #upload-placeholder:hover { background: rgba(191,161,95,0.05); border-color: var(--accent); }
+        #upload-placeholder.hidden { display: none; }
+
+        .cropper-view-box, .cropper-face { border: 2px solid var(--accent); outline: none; border-radius: 4px; }
+        .cropper-point { background-color: var(--accent); width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px var(--accent-glow); }
+        .cropper-line { background-color: var(--accent); opacity: 0.6; }
+        .cropper-modal { background: rgba(10,10,12,0.85); }
+        .cropper-center::before, .cropper-center::after { background-color: var(--accent); }
+
+        .hidden { display: none !important; opacity: 0; visibility: hidden; }
+
+        /* Footer */
+        .site-footer { width: 100%; padding: 4rem 2rem 2rem; border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(20px); opacity: 0; transform: translateY(20px); transition: all 0.8s ease; margin-top: auto; }
+        .site-footer.visible { opacity: 1; transform: translateY(0); }
+        .footer-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .footer-links a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--text-main); }
+        .footer-socials { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; }
+        .social-icon { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.3s; }
+        .social-icon svg { width: 18px; height: 18px; fill: currentColor; }
+        .social-icon:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 5px 15px var(--accent-glow); }
+        .footer-copy { color: #555; font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+
+    <!-- KINETIC PRELOADER -->
+    <div id="preloader">
+        <div class="kinetic-loader"></div>
+        <h2 style="color:var(--accent); font-weight:700; letter-spacing:0.1em; text-transform:uppercase; font-size:1.1rem; margin:0;">Hikaru Studio</h2>
+    </div>
+
+    <div id="studio-app">
+        <!-- TOP HEADER -->
+        <header>
+            <div class="logo-container">
+                <img src="logo.png" alt="Hikaru Labs Logo" class="brand-logo" onerror="this.src='https://i.postimg.cc/7LRMnvPK/Untitled-design-(1).png'">
+                <div class="logo-text">Hikaru <span>Studio</span></div>
+            </div>
+            <div class="header-actions">
+                <button class="btn" id="btn-add-files">
+                    <span style="display:flex; align-items:center; gap:6px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg> Add Files
+                    </span>
+                </button>
+                <button class="btn btn-primary" id="btn-export">
+                    <span style="display:flex; align-items:center; gap:6px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg> Export Batch
+                    </span>
+                </button>
+            </div>
+        </header>
+
+        <!-- LEFT TOOLBAR (10 TOOLS) -->
+        <aside id="left-toolbar">
+            <button class="tool-btn active" data-tool="compress">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                <span>Compress</span>
+            </button>
+            <button class="tool-btn" data-tool="convert">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l-1.41 1.41L15.17 10H4v2h11.17l-4.58 4.59L12 20l8-8z"/></svg>
+                <span>Convert</span>
+            </button>
+            <button class="tool-btn" data-tool="resize">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 15h2V7c0-1.1-.9-2-2-2H9v2h8v8zM7 17V9H5v8c0 1.1.9 2 2 2h8v-2H7z"/></svg>
+                <span>Resize</span>
+            </button>
+            <button class="tool-btn" data-tool="rotate">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.55 5.55L11 1v3C7.06 4 4 7.06 4 11s3.06 7 7 7v-2c-2.76 0-5-2.24-5-5h2c0 1.66 1.34 3 3 3s3-1.34 3-3-1.34-3-3-3v3l-4.55-4.45L15.55 5.55z"/></svg>
+                <span>Rotate</span>
+            </button>
+            <button class="tool-btn" data-tool="blur">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                <span>Blur</span>
+            </button>
+            <button class="tool-btn" data-tool="watermark">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 4v3h5.5v12h3V7H19V4H5z"/></svg>
+                <span>Watermark</span>
+            </button>
+            <button class="tool-btn" data-tool="film">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 4l2 4h-3l-2-4h-2l2 4h-3l-2-4H8l2 4H7L5 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4h-4z"/></svg>
+                <span>Film</span>
+            </button>
+            <button class="tool-btn" data-tool="passport">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2zm12 4c0 1.66-1.34 3-3 3s-3-1.34-3-3 1.34-3 3-3 3 1.34 3 3zm-9 8c0-2 4-3.1 6-3.1s6 1.1 6 3.1v1H6v-1z"/></svg>
+                <span>Passport</span>
+            </button>
+            <button class="tool-btn" data-tool="exif">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                <span>Scrub</span>
+            </button>
+            <button class="tool-btn" data-tool="rename">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-4.5 12.5H9V14h5.5v1.5zm0-3H9V11h5.5v1.5zm2-3H7.5V8h9v1.5z"/></svg>
+                <span>Rename</span>
+            </button>
+        </aside>
+
+        <!-- CENTER WORKSPACE -->
+        <main id="workspace">
+
+            <!-- Ad Container -->
+            <div id="ad-container-top" style="min-height: 90px; margin: 15px auto; width: 100%; max-width: 728px; text-align: center; display: flex; justify-content: center; align-items: center; z-index: 10;"></div>
+
+            <div id="workspace-bg"></div>
+            
+            <div id="upload-placeholder">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="var(--accent)"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.36 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                <h3 style="color:#fff; font-weight:600;">Drag Images or ZIPs Here</h3>
+                <p style="color:var(--text-muted); font-size:0.9rem;">Files remain securely on your device.</p>
+                <input type="file" id="file-input" multiple accept="image/*, application/zip, .zip" hidden>
+            </div>
+
+            <div class="canvas-container" id="canvas-container">
+                <canvas id="main-canvas"></canvas>
+            </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR (PROPERTIES) -->
+        <aside id="right-sidebar">
+            
+            <!-- PANEL: COMPRESS -->
+            <div class="prop-panel active" id="panel-compress">
+                <div class="panel-title">Smart Compress</div>
+                <div class="control-group">
+                    <span class="control-label">Compression Target</span>
+                    <select class="flat-select" id="cmp-mode">
+                        <option value="quality">By Quality (%)</option>
+                        <option value="target">Exact File Size (KB)</option>
+                    </select>
+                </div>
+                <div class="control-group" id="cmp-qual-grp">
+                    <span class="control-label">Quality Level</span>
+                    <div class="slider-row">
+                        <input type="range" id="cmp-q-slider" min="0.1" max="1" step="0.05" value="0.8">
+                        <span class="slider-val" id="cmp-q-val">80%</span>
+                    </div>
+                </div>
+                <div class="control-group hidden" id="cmp-tar-grp">
+                    <span class="control-label">Max Size (KB)</span>
+                    <input type="number" class="flat-input" id="cmp-t-input" value="500">
+                </div>
+            </div>
+
+            <!-- PANEL: CONVERT -->
+            <div class="prop-panel" id="panel-convert">
+                <div class="panel-title">Format Converter</div>
+                <div class="control-group">
+                    <span class="control-label">Target Format</span>
+                    <select class="flat-select" id="cnv-format">
+                        <option value="image/jpeg">JPEG (.jpg)</option>
+                        <option value="image/png">PNG (.png)</option>
+                        <option value="image/webp">WEBP (.webp)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- PANEL: RESIZE/CROP -->
+            <div class="prop-panel" id="panel-resize">
+                <div class="panel-title">Resize & Crop</div>
+                <div class="control-group">
+                    <span class="control-label">Dimensions (px)</span>
+                    <div style="display:flex; gap:10px;">
+                        <input type="number" class="flat-input" id="rsz-w" placeholder="Width">
+                        <input type="number" class="flat-input" id="rsz-h" placeholder="Height">
+                    </div>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Drag bounds on canvas to adjust.</p>
+                </div>
+            </div>
+
+            <!-- PANEL: ROTATE -->
+            <div class="prop-panel" id="panel-rotate">
+                <div class="panel-title">Orientation</div>
+                <div class="control-group">
+                    <span class="control-label">Angle (Degrees)</span>
+                    <div class="slider-row">
+                        <input type="range" id="rot-slider" min="-180" max="180" step="1" value="0">
+                        <span class="slider-val" id="rot-val">0°</span>
+                    </div>
+                </div>
+                <div class="control-group" style="margin-top:10px;">
+                    <span class="control-label">Quick Actions</span>
+                    <div class="quick-actions">
+                        <button class="action-box" id="rot-left">-90°</button>
+                        <button class="action-box" id="rot-right">+90°</button>
+                        <button class="action-box" id="rot-flip-h">Flip H</button>
+                        <button class="action-box" id="rot-flip-v">Flip V</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL: BLUR -->
+            <div class="prop-panel" id="panel-blur">
+                <div class="panel-title">Area Redaction</div>
+                <div class="control-group">
+                    <span class="control-label">Blur Intensity</span>
+                    <div class="slider-row">
+                        <input type="range" id="blr-slider" min="5" max="100" step="1" value="25">
+                        <span class="slider-val" id="blr-val">25px</span>
+                    </div>
+                    <p style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">Click & drag on canvas to redact.</p>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button class="btn" style="flex:1;" id="blr-undo">Undo Last</button>
+                    <button class="btn" style="flex:1; border-color:rgba(239,68,68,0.3); color:var(--error);" id="blr-clear">Clear All</button>
+                </div>
+            </div>
+
+            <!-- PANEL: WATERMARK -->
+            <div class="prop-panel" id="panel-watermark">
+                <div class="panel-title">Watermark</div>
+                <div class="control-group">
+                    <span class="control-label">Overlay Text</span>
+                    <input type="text" class="flat-input" id="wtm-text" placeholder="© Hikaru Labs">
+                </div>
+                <div class="control-group" style="margin-top:10px;">
+                    <span class="control-label">Size Scale</span>
+                    <div class="slider-row">
+                        <input type="range" id="wtm-size" min="0.02" max="0.3" step="0.01" value="0.08">
+                        <span class="slider-val" id="wtm-val">8%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL: FILM -->
+            <div class="prop-panel" id="panel-film">
+                <div class="panel-title">Film Scanner Fix</div>
+                <div class="control-group" style="gap:1rem;">
+                    <label class="toggle-row">
+                        <span class="toggle-text">Invert Negative</span>
+                        <div class="switch"><input type="checkbox" id="flm-invert" checked><span class="slider"></span></div>
+                    </label>
+                    <label class="toggle-row">
+                        <span class="toggle-text">Remove Orange Mask</span>
+                        <div class="switch"><input type="checkbox" id="flm-mask" checked><span class="slider"></span></div>
+                    </label>
+                </div>
+                <div class="control-group" style="margin-top:10px;">
+                    <span class="control-label">Exposure Bias</span>
+                    <div class="slider-row">
+                        <input type="range" id="flm-exp" min="-100" max="100" value="0">
+                        <span class="slider-val" id="flm-exp-val">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PANEL: PASSPORT -->
+            <div class="prop-panel" id="panel-passport">
+                <div class="panel-title">Passport Sheet</div>
+                <div class="control-group">
+                    <span class="control-label">Photo Standard</span>
+                    <select class="flat-select" id="ppt-photo">
+                        <option value="35x45">35x45 mm (EU/IN)</option>
+                        <option value="51x51">2x2 in (US)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <span class="control-label">Print Sheet Size</span>
+                    <select class="flat-select" id="ppt-paper">
+                        <option value="A4">A4</option>
+                        <option value="A5">A5</option>
+                    </select>
+                </div>
+                <p style="font-size:0.75rem; color:var(--accent);">Generates a 300DPI Print File.</p>
+            </div>
+
+            <!-- PANEL: EXIF SCRUB -->
+            <div class="prop-panel" id="panel-exif">
+                <div class="panel-title">Data Shield</div>
+                <div class="control-group" style="gap:1rem;">
+                    <label class="toggle-row" style="border-color: var(--accent);">
+                        <span class="toggle-text" style="color:var(--accent);">Master Scrub (Delete All)</span>
+                        <div class="switch"><input type="checkbox" id="exf-master" checked><span class="slider"></span></div>
+                    </label>
+                </div>
+                <p style="font-size:0.75rem; color:var(--text-muted); margin-top:10px;">Irreversibly strips GPS, Device fingerprints, and Timestamps from images.</p>
+            </div>
+
+            <!-- PANEL: RENAME -->
+            <div class="prop-panel" id="panel-rename">
+                <div class="panel-title">Bulk Rename</div>
+                <div class="control-group">
+                    <span class="control-label">Prefix</span>
+                    <input type="text" class="flat-input" id="rnm-prefix" placeholder="e.g. IMG_">
+                </div>
+                <div class="control-group">
+                    <span class="control-label">Suffix</span>
+                    <input type="text" class="flat-input" id="rnm-suffix" placeholder="e.g. _Edited">
+                </div>
+                <div class="control-group" style="gap:10px;">
+                    <label class="toggle-row">
+                        <span class="toggle-text">Append Numbers</span>
+                        <div class="switch"><input type="checkbox" id="rnm-num"><span class="slider"></span></div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- GLOBAL APPLY BUTTON -->
+            <div style="margin-top:auto; padding-top:20px; border-top:1px solid rgba(255,255,255,0.05);">
+                <button class="btn btn-primary" style="width:100%; padding:1rem; font-size:1rem;" id="btn-apply-action">Apply to Entire Queue</button>
+            </div>
+        </aside>
+
+        <!-- BOTTOM QUEUE -->
+        <div id="bottom-queue">
+            <!-- Populated dynamically via JS -->
+        </div>
+
+    </div>
+
+    <footer class="site-footer" id="site-footer">
+        <div class="footer-links">
+            <a href="story.html">Our Story</a>
+            <a href="Privacy Policy.pdf" target="_blank">Privacy Policy</a>
+            <a href="Terms & Condition.pdf" target="_blank">Terms & Conditions</a>
+            <a href="mailto:aksh@hikarulabs.xyz">Contact Us</a>
+        </div>
+        <div class="footer-socials">
+            <a href="https://www.instagram.com/hikarulabs/" target="_blank" class="social-icon" aria-label="Instagram">
+                <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            </a>
+            <a href="https://www.linkedin.com/company/hikaru-labs/" target="_blank" class="social-icon" aria-label="LinkedIn">
+                <svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            </a>
+            <a href="https://x.com/Hikaru_Labs" target="_blank" class="social-icon" aria-label="X">
+                <svg viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+            </a>
+        </div>
+        <p class="footer-copy">© 2026 Hikaru Labs. All rights reserved.</p>
+    </footer>
+
+    <!-- PROCESSING OVERLAY -->
+    <div id="apply-overlay">
+        <div class="progress-box">
+            <div class="kinetic-loader" style="margin: 0 auto 1.5rem auto;"></div>
+            <h2 style="color:var(--text-main); margin-bottom:5px; font-weight:600; font-size:1.5rem;" id="overlay-text">Processing Pipeline...</h2>
+            <p style="color:var(--text-muted); font-size:0.9rem;">Utilizing hardware-accelerated limits</p>
+            <div class="progress-bar"><div class="progress-fill" id="overlay-fill"></div></div>
+        </div>
+    </div>
+
+    <script>
+        // --- Firebase Init ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSVt_JqH2vsqFLuT5xDOQQUyxU11QMKak",
+            authDomain: "hikaru-auth.firebaseapp.com",
+            projectId: "hikaru-auth",
+            storageBucket: "hikaru-auth.firebasestorage.app",
+            messagingSenderId: "906310702181",
+            appId: "1:906310702181:web:16ec0e0b5cff635854a28c",
+            measurementId: "G-4MSLFECF5S"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- Fast Encryption Engine ---
+        const CIPHER_KEY = "HIKARU_LOCAL_FIRST";
+        function hikaruDecrypt(base64Str) {
+            try {
+                let text = atob(base64Str);
+                let result = "";
+                for(let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ CIPHER_KEY.charCodeAt(i % CIPHER_KEY.length));
+                }
+                return JSON.parse(result);
+            } catch (e) { return null; }
+        }
+
+        // Limits Logic State
+        let activeTargetUid = null;
+        let userPlan = 'free';
+        let totalSyncedUsage = 0;
+        let pendingUsageBytes = 0;
+        const LIMIT_1GB = 1024 * 1024 * 1024;
+
+        // ==========================================
+        // THE OMNI-WORKER: ZERO-COPY ARCHITECTURE
+        // ==========================================
+        const omniWorkerCode = `
+            importScripts('https://cdnjs.cloudflare.com/ajax/libs/piexifjs/1.0.6/piexif.min.js');
+
+            let sharedCanvas = null;
+
+            async function compressToTarget(bitmap, outType, targetBytes, origSize) {
+                if (origSize <= targetBytes) return null; 
+                if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+                sharedCanvas.width = bitmap.width; sharedCanvas.height = bitmap.height;
+                const ctx = sharedCanvas.getContext('2d', { alpha: false, willReadFrequently: true });
+                ctx.drawImage(bitmap, 0, 0);
+
+                let minQ = 0.01; let maxQ = 1.0; let bestBlob = null;
+                for (let step = 0; step < 7; step++) {
+                    let midQ = (minQ + maxQ) / 2;
+                    let currentBlob = await sharedCanvas.convertToBlob({ type: outType, quality: midQ });
+                    if (currentBlob.size <= targetBytes) { bestBlob = currentBlob; minQ = midQ; } else { maxQ = midQ; }
+                }
+                if (!bestBlob) bestBlob = await sharedCanvas.convertToBlob({ type: outType, quality: 0.01 });
+                sharedCanvas.width = 1; sharedCanvas.height = 1;
+                return bestBlob;
+            }
+
+            async function stripExif(fileBlob) {
+                const buffer = await fileBlob.arrayBuffer();
+                const view = new DataView(buffer);
+                if (view.getUint16(0, false) === 0xFFD8) {
+                    try {
+                        let offset = 2; let chunks = []; let start = 0;
+                        while (offset + 4 <= view.byteLength) {
+                            const marker = view.getUint16(offset, false);
+                            if (marker === 0xFFDA) { chunks.push(new Uint8Array(buffer).subarray(start)); break; }
+                            const length = view.getUint16(offset + 2, false);
+                            if (marker >= 0xFFE1 && marker <= 0xFFEF) {
+                                chunks.push(new Uint8Array(buffer).subarray(start, offset)); start = offset + length + 2;
+                            }
+                            offset += length + 2;
+                        }
+                        if (chunks.length > 0 && start > 0) {
+                            let totalLen = chunks.reduce((acc, c) => acc + c.byteLength, 0);
+                            let newBuffer = new Uint8Array(totalLen); let ptr = 0;
+                            for (let c of chunks) { newBuffer.set(c, ptr); ptr += c.byteLength; }
+                            return new Blob([newBuffer.buffer], { type: 'image/jpeg' });
+                        }
+                    } catch (e) {}
+                }
+                return fileBlob;
+            }
+
+            self.onmessage = async function(e) {
+                const { action, fileObj, params, index } = e.data;
+                try {
+                    let outType = fileObj.type;
+                    let outName = fileObj.name;
+                    let resultBlob = null;
+                    let bitmap = null;
+
+                    // 1. COMPRESS
+                    if (action === 'compress') {
+                        if (outType === 'image/jpeg') fileObj.file = await stripExif(fileObj.file);
+                        bitmap = await createImageBitmap(fileObj.file);
+                        if (params.mode === 'target') {
+                            resultBlob = await compressToTarget(bitmap, outType, params.targetBytes, fileObj.file.size);
+                            if(!resultBlob) resultBlob = fileObj.file;
+                        } else {
+                            if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+                            sharedCanvas.width = bitmap.width; sharedCanvas.height = bitmap.height;
+                            sharedCanvas.getContext('2d', { alpha: false }).drawImage(bitmap, 0, 0);
+                            resultBlob = await sharedCanvas.convertToBlob({ type: outType, quality: params.quality });
+                        }
+                    }
+                    
+                    // 2. CONVERT
+                    else if (action === 'convert') {
+                        bitmap = await createImageBitmap(fileObj.file);
+                        outType = params.format;
+                        outName = outName.replace(/\\.[^/.]+$/, "") + (outType === 'image/png' ? '.png' : outType==='image/webp'?'.webp':'.jpg');
+                        
+                        if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+                        sharedCanvas.width = bitmap.width; sharedCanvas.height = bitmap.height;
+                        const ctx = sharedCanvas.getContext('2d', { alpha: false });
+                        if(outType === 'image/jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,bitmap.width,bitmap.height); }
+                        ctx.drawImage(bitmap, 0, 0);
+                        resultBlob = await sharedCanvas.convertToBlob({ type: outType, quality: 0.95 });
+                    }
+
+                    // 3. RESIZE / CROP
+                    else if (action === 'resize') {
+                        bitmap = await createImageBitmap(fileObj.file);
+                        if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(params.w, params.h);
+                        sharedCanvas.width = params.w; sharedCanvas.height = params.h;
+                        const ctx = sharedCanvas.getContext('2d', { alpha: false });
+                        if (outType === 'image/jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,params.w,params.h); }
+                        
+                        if (params.cropData) {
+                            ctx.drawImage(bitmap, params.cropData.x, params.cropData.y, params.cropData.width, params.cropData.height, 0, 0, params.w, params.h);
+                        } else {
+                            const ir = bitmap.width/bitmap.height; const tr = params.w/params.h;
+                            let dw=params.w, dh=params.h, ox=0, oy=0;
+                            if(ir>tr){ dw=params.h*ir; ox=(params.w-dw)/2; } else { dh=params.w/ir; oy=(params.h-dh)/2; }
+                            ctx.drawImage(bitmap, ox, oy, dw, dh);
+                        }
+                        resultBlob = await sharedCanvas.convertToBlob({ type: outType, quality: 0.95 });
+                    }
+
+                    // 4. ROTATE
+                    else if (action === 'rotate') {
+                        bitmap = await createImageBitmap(fileObj.file);
+                        const rad = params.angle * Math.PI / 180;
+                        const sin = Math.abs(Math.sin(rad)); const cos = Math.abs(Math.cos(rad));
+                        const newW = Math.floor(bitmap.width * cos + bitmap.height * sin);
+                        const newH = Math.floor(bitmap.width * sin + bitmap.height * cos);
+                        
+                        if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(newW, newH);
+                        sharedCanvas.width = newW; sharedCanvas.height = newH;
+                        const ctx = sharedCanvas.getContext('2d', { alpha: false, willReadFrequently: true });
+                        if (outType === 'image/jpeg' || outType === 'image/jpg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,newW,newH); }
+                        
+                        ctx.translate(newW / 2, newH / 2); ctx.rotate(rad); ctx.scale(params.flipH, params.flipV);
+                        ctx.drawImage(bitmap, -Math.floor(bitmap.width/2), -Math.floor(bitmap.height/2));
+                        resultBlob = await sharedCanvas.convertToBlob({ type: outType, quality: 0.95 });
+                    }
+
+                    // 5. BLUR
+                    else if (action === 'blur') {
+                        bitmap = await createImageBitmap(fileObj.file);
+                        if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+                        sharedCanvas.width = bitmap.width; sharedCanvas.height = bitmap.height;
+                        const ctx = sharedCanvas.getContext('2d', { alpha: false });
+                        ctx.drawImage(bitmap, 0, 0);
+                        for(let r of params.regions) {
+                            ctx.save(); ctx.beginPath(); ctx.rect(r.x, r.y, r.w, r.h); ctx.clip();
+                            ctx.filter = \`blur(\${r.intensity}px)\`;
+                            ctx.drawImage(bitmap, 0, 0); ctx.restore();
+                        }
+                        resultBlob = await sharedCanvas.convertToBlob({ type: outType, quality: 0.95 });
+                    }
+
+                    // 6. WATERMARK
+                    else if (action === 'watermark') {
+                        bitmap = await createImageBitmap(fileObj.file);
+                        if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+                        sharedCanvas.width = bitmap.width; sharedCanvas.height = bitmap.height;
+                        const ctx = sharedCanvas.getContext('2d', { alpha: false });
+                        ctx.drawImage(bitmap, 0, 0);
+                        
+                        if (params.text) {
+                            const fontSize = Math.max(20, Math.floor(bitmap.height * params.sizeRatio));
+                            ctx.font = \`bold \${fontSize}px sans-serif\`; ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                            ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; ctx.shadowBlur = Math.max(4, fontSize * 0.15);
+                            ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
+                            ctx.fillText(params.text, bitmap.width / 2, bitmap.height / 2);
+                        }
+                        resultBlob = await sharedCanvas.convertToBlob({ type: outType, quality: 0.95 });
+                    }
+
+                    // 7. FILM
+                    else if (action === 'film') {
+                        bitmap = await createImageBitmap(fileObj.file);
+                        if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+                        sharedCanvas.width = bitmap.width; sharedCanvas.height = bitmap.height;
+                        const ctx = sharedCanvas.getContext('2d', { alpha: false, willReadFrequently:true });
+                        ctx.drawImage(bitmap, 0, 0);
+                        
+                        const imgData = ctx.getImageData(0,0,bitmap.width,bitmap.height);
+                        const d = imgData.data; const len = d.length;
+                        
+                        if(params.invert) { for(let i=0;i<len;i+=4){ d[i]=255-d[i]; d[i+1]=255-d[i+1]; d[i+2]=255-d[i+2]; } }
+                        if(params.autoLevels) {
+                            let minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0;
+                            for(let i=0;i<len;i+=4){
+                                if(d[i]<minR) minR=d[i]; if(d[i]>maxR) maxR=d[i];
+                                if(d[i+1]<minG) minG=d[i+1]; if(d[i+1]>maxG) maxG=d[i+1];
+                                if(d[i+2]<minB) minB=d[i+2]; if(d[i+2]>maxB) maxB=d[i+2];
+                            }
+                            const rR=(maxR-minR)||1, rG=(maxG-minG)||1, rB=(maxB-minB)||1;
+                            for(let i=0;i<len;i+=4){ d[i]=((d[i]-minR)/rR)*255; d[i+1]=((d[i+1]-minG)/rG)*255; d[i+2]=((d[i+2]-minB)/rB)*255; }
+                        }
+                        const factor = (259*(params.con+255))/(255*(259-params.con));
+                        for(let i=0;i<len;i+=4){
+                            let r=d[i]+params.exp, g=d[i+1]+params.exp, b=d[i+2]+params.exp;
+                            if(params.con!==0){ r=factor*(r-128)+128; g=factor*(g-128)+128; b=factor*(b-128)+128; }
+                            d[i]=Math.max(0,Math.min(255,r)); d[i+1]=Math.max(0,Math.min(255,g)); d[i+2]=Math.max(0,Math.min(255,b));
+                        }
+                        ctx.putImageData(imgData, 0, 0);
+                        resultBlob = await sharedCanvas.convertToBlob({ type: outType, quality: 0.95 });
+                    }
+
+                    // 8. PASSPORT
+                    else if (action === 'passport') {
+                        bitmap = await createImageBitmap(fileObj.file);
+                        const mm2px = 300 / 25.4;
+                        const tW = Math.round(params.photo.w * mm2px); const tH = Math.round(params.photo.h * mm2px);
+                        const pW = Math.round(params.paper.w * mm2px); const pH = Math.round(params.paper.h * mm2px);
+                        const gap = Math.round(5 * mm2px); const marg = Math.round(10 * mm2px);
+                        const cols = Math.floor((pW-(marg*2)+gap)/(tW+gap)); const rows = Math.floor((pH-(marg*2)+gap)/(tH+gap));
+                        const sX = Math.round((pW-((cols*tW)+((cols-1)*gap)))/2); const sY = Math.round((pH-((rows*tH)+((rows-1)*gap)))/2);
+
+                        const cropC = new OffscreenCanvas(tW, tH);
+                        cropC.getContext('2d').drawImage(bitmap, params.crop.x, params.crop.y, params.crop.width, params.crop.height, 0, 0, tW, tH);
+                        bitmap.close();
+
+                        if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(pW, pH);
+                        sharedCanvas.width = pW; sharedCanvas.height = pH;
+                        const ctx = sharedCanvas.getContext('2d', { alpha: false });
+                        ctx.fillStyle='#fff'; ctx.fillRect(0,0,pW,pH); ctx.strokeStyle='#ccc'; ctx.lineWidth=2;
+
+                        for(let r=0;r<rows;r++) {
+                            for(let c=0;c<cols;c++) {
+                                const x = sX + (c*(tW+gap)); const y = sY + (r*(tH+gap));
+                                ctx.drawImage(cropC, x, y); ctx.strokeRect(x, y, tW, tH);
+                            }
+                        }
+                        outType = 'image/jpeg';
+                        outName = outName.replace(/\\.[^/.]+$/, "") + "_Passport.jpg";
+                        resultBlob = await sharedCanvas.convertToBlob({ type: outType, quality: 1.0 });
+                    }
+
+                    // 9. EXIF SCRUB
+                    else if (action === 'exif') {
+                        if (outType === 'image/jpeg') {
+                            resultBlob = await stripExif(fileObj.file);
+                        } else {
+                            bitmap = await createImageBitmap(fileObj.file);
+                            if (!sharedCanvas) sharedCanvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+                            sharedCanvas.width = bitmap.width; sharedCanvas.height = bitmap.height;
+                            sharedCanvas.getContext('2d', {alpha:false}).drawImage(bitmap, 0, 0);
+                            resultBlob = await sharedCanvas.convertToBlob({ type: outType, quality: 0.95 });
+                        }
+                    }
+
+                    // Cleanup Memory & Return Zero-Copy
+                    if (bitmap) bitmap.close();
+                    if (sharedCanvas) { sharedCanvas.width = 1; sharedCanvas.height = 1; }
+                    
+                    if(resultBlob) {
+                        const buffer = await resultBlob.arrayBuffer();
+                        self.postMessage({ success: true, buffer, type: outType, name: outName, index }, [buffer]);
+                    } else {
+                        throw new Error("Blob generation failed.");
+                    }
+
+                } catch (err) {
+                    self.postMessage({ success: false, error: err.message, index });
+                }
+            };
+        `;
+        
+        const omniBlob = new Blob([omniWorkerCode], { type: 'application/javascript' });
+        const omniUrl = URL.createObjectURL(omniBlob);
+
+        // ==========================================
+        // MAIN STUDIO LOGIC
+        // ==========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            const preloader = document.getElementById('preloader');
+            window.addEventListener('load', () => preloader.classList.add('hidden'));
+
+            // --- Authentication & Session Limits Check ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('sess_token');
+            const storedToken = sessionStorage.getItem('hikaru_token');
+            const activeToken = urlToken || storedToken;
+            let activeSession = null;
+
+            if (activeToken) activeSession = hikaruDecrypt(activeToken);
+
+            if (activeSession) {
+                if (urlToken) {
+                    sessionStorage.setItem('hikaru_token', urlToken);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                activeTargetUid = activeSession.uid;
+                fetchUserPlanAndLimits(activeTargetUid);
+            } else {
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        activeTargetUid = user.uid;
+                        fetchUserPlanAndLimits(activeTargetUid);
+                    } else {
+                        window.location.href = "sign.html";
+                    }
+                });
+            }
+
+            async function fetchUserPlanAndLimits(uid) {
+                try {
+                    const doc = await db.collection('users').doc(uid).get();
+                    if (doc.exists) {
+                        const data = doc.data();
+                        userPlan = (data.plan || 'free').toLowerCase();
+
+                        if (userPlan === 'free' && !window._adsterraInjected) {
+                            window._adsterraInjected = true;
+                            try {
+                                const adScript = document.createElement('script');
+                                adScript.src = "https://www.profitableratecpmnetwork.com/qyxu8icy?key=6223f4d35e0dcf2d19f549cb2f916281";
+                                adScript.async = true;
+                                adScript.defer = true;
+                                adScript.onerror = function() { console.warn("Ad blocked or failed to load"); };
+                                document.body.appendChild(adScript);
+                            } catch (e) {
+                                console.warn("Failed to inject ad script", e);
+                            }
+                        }
+
+                        totalSyncedUsage = data.dailyUsage || 0;
+                        checkLimits();
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                }
+            }
+
+            function checkLimits() {
+                if (userPlan === 'free' && totalSyncedUsage >= LIMIT_1GB) {
+                    alert("Daily 1GB limit reached for Free Plan. Please upgrade to continue processing.");
+                    document.getElementById('file-input').disabled = true;
+                    document.getElementById('btn-add-files').disabled = true;
+                }
+            }
+
+            // Sync usage every 10 seconds
+            setInterval(async () => {
+                if (pendingUsageBytes > 0 && activeTargetUid) {
+                    try {
+                        const docRef = db.collection('users').doc(activeTargetUid);
+                        const doc = await docRef.get();
+                        let currentUsage = doc.data()?.dailyUsage || 0;
+                        let newUsage = currentUsage + pendingUsageBytes;
+                        
+                        await docRef.set({
+                            dailyUsage: newUsage,
+                            lastSync: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                        
+                        totalSyncedUsage = newUsage;
+                        pendingUsageBytes = 0; // Reset pending
+                        checkLimits();
+                    } catch (e) {
+                        console.error("Error syncing limits:", e);
+                    }
+                }
+            }, 10000);
+
+            // DOM
+            const uploadPlaceholder = document.getElementById('upload-placeholder');
+            const fileInput = document.getElementById('file-input');
+            const btnAddFiles = document.getElementById('btn-add-files');
+            const btnExport = document.getElementById('btn-export');
+            
+            const bottomQueue = document.getElementById('bottom-queue');
+            const canvasContainer = document.getElementById('canvas-container');
+            const mainCanvas = document.getElementById('main-canvas');
+            
+            const btnApplyAction = document.getElementById('btn-apply-action');
+            const overlay = document.getElementById('apply-overlay');
+            const overlayText = document.getElementById('overlay-text');
+            const overlayFill = document.getElementById('overlay-fill');
+
+            // State
+            let activeTool = 'compress';
+            let fileQueue = []; 
+            let activeFileIndex = -1;
+            
+            let cropper = null;
+            let currentImgObj = null;
+            let displayScale = 1;
+            
+            // Tool Specific State
+            let blurRegions = [];
+            let isDrawingBlur = false;
+            let startX=0, startY=0, currX=0, currY=0;
+            
+            let rotState = { angle: 0, flipH: 1, flipV: 1 };
+
+            // Worker Pool
+            const maxWorkers = Math.min(navigator.hardwareConcurrency || 2, 3);
+            const workers = Array.from({length: maxWorkers}, () => new Worker(omniUrl));
+
+            // --- 1. TOOL SWITCHING LOGIC ---
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const tBtn = e.currentTarget;
+                    document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                    tBtn.classList.add('active');
+                    
+                    activeTool = tBtn.dataset.tool;
+                    
+                    document.querySelectorAll('.prop-panel').forEach(p => p.classList.remove('active'));
+                    document.getElementById(`panel-${activeTool}`).classList.add('active');
+
+                    // Clean canvas overlays
+                    if (cropper) { cropper.destroy(); cropper = null; }
+                    mainCanvas.style.cursor = 'default';
+                    
+                    // Reset tool states when switching
+                    if (activeTool !== 'blur') blurRegions = [];
+                    if (activeTool !== 'rotate') rotState = { angle: 0, flipH: 1, flipV: 1 };
+
+                    if(fileQueue.length > 0) renderActiveFile();
+                });
+            });
+
+            // --- 2. INTAKE & QUEUE MANAGEMENT ---
+            const preventDefaults = (e) => { e.preventDefault(); e.stopPropagation(); };
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => document.body.addEventListener(e, preventDefaults));
+            document.body.addEventListener('drop', (e) => { if(e.dataTransfer.files.length>0 && !fileInput.disabled) loadFiles(e.dataTransfer.files); });
+            uploadPlaceholder.addEventListener('click', () => { if (!fileInput.disabled) fileInput.click(); });
+            btnAddFiles.addEventListener('click', () => { if (!btnAddFiles.disabled) fileInput.click(); });
+            fileInput.addEventListener('change', function() { if(this.files.length>0) loadFiles(this.files); this.value=''; });
+
+            const handleZipFile = async (file) => {
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const extracted = [];
+                    return new Promise((resolve) => {
+                        fflate.unzip(new Uint8Array(buffer), (err, unzipped) => {
+                            if (err) return resolve([]);
+                            for (const [filename, data] of Object.entries(unzipped)) {
+                                if (data.length === 0 || filename.includes('__MACOSX')) continue;
+                                const ext = filename.split('.').pop().toLowerCase();
+                                const mime = ext==='png'?'image/png':ext==='webp'?'image/webp':ext==='jpg'||ext==='jpeg'?'image/jpeg':'';
+                                if (mime) extracted.push(new File([new Blob([data], {type:mime})], filename.split('/').pop(), {type:mime}));
+                            }
+                            resolve(extracted);
+                        });
+                    });
+                } catch (e) { return []; }
+            };
+
+            const loadFiles = async (files) => {
+                const arr = Array.from(files);
+                
+                let batchSize = 0;
+                arr.forEach(f => batchSize += f.size);
+                
+                // Enforce immediately before queuing if limit reached
+                if (userPlan === 'free' && (totalSyncedUsage + pendingUsageBytes + batchSize) > LIMIT_1GB) {
+                    alert("This batch exceeds your daily 1GB limit on the Free Plan. Please upgrade.");
+                    return;
+                }
+                
+                pendingUsageBytes += batchSize; // Track usage for the 10s sync
+                
+                for (let f of arr) {
+                    if (f.type.includes('zip') || f.name.endsWith('.zip')) {
+                        const unzipped = await handleZipFile(f);
+                        for(let u of unzipped) addToQueue(u);
+                    } else if (f.type.startsWith('image/')) {
+                        addToQueue(f);
+                    }
+                }
+                
+                if (fileQueue.length > 0) {
+                    uploadPlaceholder.classList.add('hidden');
+                    canvasContainer.classList.add('active');
+                    if (activeFileIndex === -1) {
+                        activeFileIndex = 0;
+                        renderActiveFile();
+                    }
+                    renderQueueUI();
+                }
+            };
+
+            const addToQueue = (fileBlob, nameStr) => {
+                const name = nameStr || fileBlob.name;
+                const extMatch = name.match(/\.([0-9a-z]+)(?:[\?#]|$)/i);
+                fileQueue.push({
+                    file: fileBlob,
+                    name: name,
+                    type: fileBlob.type,
+                    extBadge: extMatch ? extMatch[1].toUpperCase() : 'IMG',
+                    url: URL.createObjectURL(fileBlob)
+                });
+            };
+
+            const renderQueueUI = () => {
+                bottomQueue.innerHTML = '';
+                fileQueue.forEach((item, idx) => {
+                    const div = document.createElement('div');
+                    div.className = `queue-item ${idx === activeFileIndex ? 'active' : ''}`;
+                    div.innerHTML = `<span class="badge">${item.extBadge}</span><span class="q-name">${item.name}</span>`;
+                    div.onclick = () => { activeFileIndex = idx; renderQueueUI(); renderActiveFile(); };
+                    bottomQueue.appendChild(div);
+                });
+            };
+
+            // --- 3. RENDER WORKSPACE ---
+            const renderActiveFile = () => {
+                if(activeFileIndex < 0 || activeFileIndex >= fileQueue.length) return;
+                const item = fileQueue[activeFileIndex];
+
+                const img = new Image();
+                img.onload = () => {
+                    currentImgObj = img;
+                    
+                    if (activeTool === 'resize' || activeTool === 'passport') {
+                        // Let Cropper control the DOM image
+                        const domImg = document.createElement('img');
+                        domImg.src = item.url;
+                        domImg.style.maxWidth = '100%'; domImg.style.maxHeight = '100%';
+                        canvasContainer.innerHTML = '';
+                        canvasContainer.appendChild(domImg);
+                        
+                        const ratio = activeTool === 'passport' ? (document.getElementById('ppt-photo').value === '35x45' ? 35/45 : 1) : NaN;
+                        cropper = new Cropper(domImg, { viewMode:1, autoCropArea:0.9, aspectRatio:ratio, 
+                            crop(e) { 
+                                if(activeTool === 'resize') {
+                                    document.getElementById('rsz-w').value = Math.round(e.detail.width);
+                                    document.getElementById('rsz-h').value = Math.round(e.detail.height);
+                                }
+                            }
+                        });
+
+                    } else {
+                        // Pure canvas drawing for visual filters
+                        canvasContainer.innerHTML = '<canvas id="main-canvas"></canvas>';
+                        const cvs = document.getElementById('main-canvas');
+                        const ctx = cvs.getContext('2d');
+                        
+                        const maxDim = 800; displayScale = 1;
+                        if (img.width > maxDim || img.height > maxDim) displayScale = maxDim / Math.max(img.width, img.height);
+                        
+                        if (activeTool === 'rotate') {
+                            const rad = rotState.angle * Math.PI / 180;
+                            const sin = Math.abs(Math.sin(rad)); const cos = Math.abs(Math.cos(rad));
+                            const newW = Math.floor(img.width * cos + img.height * sin);
+                            const newH = Math.floor(img.width * sin + img.height * cos);
+                            
+                            displayScale = (newW > maxDim || newH > maxDim) ? maxDim / Math.max(newW, newH) : 1;
+                            cvs.width = Math.floor(newW * displayScale); cvs.height = Math.floor(newH * displayScale);
+                            
+                            ctx.translate(cvs.width/2, cvs.height/2); ctx.rotate(rad); ctx.scale(rotState.flipH, rotState.flipV);
+                            const dW = img.width * displayScale; const dH = img.height * displayScale;
+                            ctx.drawImage(img, -Math.floor(dW/2), -Math.floor(dH/2), dW, dH);
+                        } else {
+                            cvs.width = Math.floor(img.width * displayScale); cvs.height = Math.floor(img.height * displayScale);
+                            ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+
+                            if (activeTool === 'film') applyLiveFilmFilters(ctx, cvs);
+                            if (activeTool === 'blur') { cvs.style.cursor = 'crosshair'; drawLiveBlurs(ctx, cvs); }
+                            if (activeTool === 'watermark') drawLiveWatermark(ctx, cvs);
+                        }
+                    }
+                };
+                img.src = item.url;
+            };
+
+            // --- 4. LIVE PREVIEWS ---
+            const applyLiveFilmFilters = (ctx, cvs) => {
+                const inv = document.getElementById('flm-invert').checked;
+                const aut = document.getElementById('flm-mask').checked;
+                const exp = parseInt(document.getElementById('flm-exp').value);
+                
+                ctx.drawImage(currentImgObj, 0, 0, cvs.width, cvs.height);
+                const imgData = ctx.getImageData(0,0,cvs.width,cvs.height);
+                const d = imgData.data; const len = d.length;
+
+                if(inv) { for(let i=0;i<len;i+=4){ d[i]=255-d[i]; d[i+1]=255-d[i+1]; d[i+2]=255-d[i+2]; } }
+                if(aut) {
+                    let minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0;
+                    for(let i=0;i<len;i+=4){
+                        if(d[i]<minR) minR=d[i]; if(d[i]>maxR) maxR=d[i];
+                        if(d[i+1]<minG) minG=d[i+1]; if(d[i+1]>maxG) maxG=d[i+1];
+                        if(d[i+2]<minB) minB=d[i+2]; if(d[i+2]>maxB) maxB=d[i+2];
+                    }
+                    const rR=(maxR-minR)||1, rG=(maxG-minG)||1, rB=(maxB-minB)||1;
+                    for(let i=0;i<len;i+=4){ d[i]=((d[i]-minR)/rR)*255; d[i+1]=((d[i+1]-minG)/rG)*255; d[i+2]=((d[i+2]-minB)/rB)*255; }
+                }
+                for(let i=0;i<len;i+=4){
+                    d[i]=Math.max(0,Math.min(255,d[i]+exp)); d[i+1]=Math.max(0,Math.min(255,d[i+1]+exp)); d[i+2]=Math.max(0,Math.min(255,d[i+2]+exp));
+                }
+                ctx.putImageData(imgData, 0,0);
+            };
+
+            const drawLiveBlurs = (ctx, cvs) => {
+                ctx.drawImage(currentImgObj, 0, 0, cvs.width, cvs.height);
+                for(let r of blurRegions) {
+                    ctx.save(); ctx.beginPath();
+                    ctx.rect(r.x*displayScale, r.y*displayScale, r.w*displayScale, r.h*displayScale); ctx.clip();
+                    ctx.filter = `blur(${Math.max(2, r.intensity*displayScale)}px)`;
+                    ctx.drawImage(currentImgObj, 0, 0, cvs.width, cvs.height);
+                    ctx.restore();
+                }
+                if(isDrawingBlur) {
+                    ctx.fillStyle='rgba(191,161,95,0.3)'; ctx.strokeStyle='rgba(191,161,95,0.8)';
+                    ctx.lineWidth=2; ctx.fillRect(startX, startY, currX-startX, currY-startY); ctx.strokeRect(startX, startY, currX-startX, currY-startY);
+                }
+            };
+
+            const drawLiveWatermark = (ctx, cvs) => {
+                ctx.drawImage(currentImgObj, 0, 0, cvs.width, cvs.height);
+                const text = document.getElementById('wtm-text').value;
+                const sizeRatio = parseFloat(document.getElementById('wtm-size').value);
+                if (text) {
+                    const fontSize = Math.max(12, Math.floor(cvs.height * sizeRatio));
+                    ctx.font = `bold ${fontSize}px sans-serif`;
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)'; ctx.shadowBlur = Math.max(4, fontSize * 0.15);
+                    ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2;
+                    ctx.fillText(text, cvs.width / 2, cvs.height / 2);
+                }
+            };
+
+            // Blur Canvas Listeners
+            canvasContainer.addEventListener('mousedown', (e) => {
+                if(activeTool !== 'blur' || e.target.tagName !== 'CANVAS') return;
+                const rect = e.target.getBoundingClientRect();
+                startX = (e.clientX - rect.left) * (e.target.width / rect.width);
+                startY = (e.clientY - rect.top) * (e.target.height / rect.height);
+                isDrawingBlur = true;
+            });
+            canvasContainer.addEventListener('mousemove', (e) => {
+                if(!isDrawingBlur || activeTool !== 'blur' || e.target.tagName !== 'CANVAS') return;
+                const rect = e.target.getBoundingClientRect();
+                currX = (e.clientX - rect.left) * (e.target.width / rect.width);
+                currY = (e.clientY - rect.top) * (e.target.height / rect.height);
+                const ctx = document.getElementById('main-canvas').getContext('2d');
+                drawLiveBlurs(ctx, document.getElementById('main-canvas'));
+            });
+            const finishDraw = (e) => {
+                if(!isDrawingBlur) return;
+                isDrawingBlur = false;
+                let w = currX - startX, h = currY - startY, fx=startX, fy=startY;
+                if(w<0){fx=currX;w=Math.abs(w);} if(h<0){fy=currY;h=Math.abs(h);}
+                if(w>5 && h>5) blurRegions.push({x:fx/displayScale, y:fy/displayScale, w:w/displayScale, h:h/displayScale, intensity: parseInt(document.getElementById('blr-slider').value)});
+                const cvs = document.getElementById('main-canvas');
+                if(cvs) drawLiveBlurs(cvs.getContext('2d'), cvs);
+            };
+            canvasContainer.addEventListener('mouseup', finishDraw);
+            canvasContainer.addEventListener('mouseleave', finishDraw);
+
+            // Control Panel Listeners
+            document.getElementById('cmp-mode').addEventListener('change', e => {
+                document.getElementById('cmp-qual-grp').classList.toggle('hidden', e.target.value==='target');
+                document.getElementById('cmp-tar-grp').classList.toggle('hidden', e.target.value==='quality');
+            });
+            document.getElementById('cmp-q-slider').addEventListener('input', e => document.getElementById('cmp-q-val').textContent=Math.round(e.target.value*100)+'%');
+            document.getElementById('blr-slider').addEventListener('input', e => { document.getElementById('blr-val').textContent=e.target.value+'px'; if(activeTool==='blur') renderActiveFile(); });
+            document.getElementById('blr-undo').addEventListener('click', () => { blurRegions.pop(); renderActiveFile(); });
+            document.getElementById('blr-clear').addEventListener('click', () => { blurRegions=[]; renderActiveFile(); });
+            ['flm-invert','flm-mask','flm-exp'].forEach(id => document.getElementById(id).addEventListener('change', renderActiveFile));
+            document.getElementById('flm-exp').addEventListener('input', e=> { document.getElementById('flm-exp-val').textContent=e.target.value; renderActiveFile(); });
+            document.getElementById('ppt-photo').addEventListener('change', e => { if(cropper){ cropper.setAspectRatio(e.target.value==='35x45'?35/45:1); }});
+            
+            // Rotate Listeners
+            const applyAngle = (val) => { let ang = parseInt(val); if (ang > 180) ang = ang % 360 - (ang % 360 > 180 ? 360 : 0); if (ang < -180) ang = ang % 360 + (ang % 360 < -180 ? 360 : 0); rotState.angle = ang; document.getElementById('rot-slider').value = ang; document.getElementById('rot-val').textContent = ang+'°'; renderActiveFile(); };
+            document.getElementById('rot-slider').addEventListener('input', e => applyAngle(e.target.value));
+            document.getElementById('rot-left').addEventListener('click', () => applyAngle(rotState.angle - 90));
+            document.getElementById('rot-right').addEventListener('click', () => applyAngle(rotState.angle + 90));
+            document.getElementById('rot-flip-h').addEventListener('click', () => { rotState.flipH *= -1; renderActiveFile(); });
+            document.getElementById('rot-flip-v').addEventListener('click', () => { rotState.flipV *= -1; renderActiveFile(); });
+            
+            // Watermark Listeners
+            ['wtm-text', 'wtm-size'].forEach(id => document.getElementById(id).addEventListener('input', () => {
+                document.getElementById('wtm-val').textContent = Math.round(document.getElementById('wtm-size').value * 100) + '%';
+                if(activeTool === 'watermark') renderActiveFile();
+            }));
+
+            // --- 5. BATCH PIPELINE EXECUTION ---
+            btnApplyAction.addEventListener('click', async () => {
+                if (fileQueue.length === 0) return;
+                overlay.classList.add('active');
+                
+                // Build Parameters Context
+                let params = {};
+                if (activeTool === 'compress') params = { mode: document.getElementById('cmp-mode').value, quality: parseFloat(document.getElementById('cmp-q-slider').value), targetBytes: parseInt(document.getElementById('cmp-t-input').value)*1024 };
+                if (activeTool === 'convert') params = { format: document.getElementById('cnv-format').value };
+                if (activeTool === 'blur') params = { regions: [...blurRegions] };
+                if (activeTool === 'rotate') params = { angle: rotState.angle, flipH: rotState.flipH, flipV: rotState.flipV };
+                if (activeTool === 'watermark') params = { text: document.getElementById('wtm-text').value, sizeRatio: parseFloat(document.getElementById('wtm-size').value) };
+                if (activeTool === 'film') params = { invert: document.getElementById('flm-invert').checked, autoLevels: document.getElementById('flm-mask').checked, exp: parseInt(document.getElementById('flm-exp').value), con: 0 };
+                
+                if (activeTool === 'resize' || activeTool === 'passport') {
+                    if(!cropper) { overlay.classList.remove('active'); alert("Please wait for image to load."); return; }
+                    const d = cropper.getData(true);
+                    if(activeTool === 'resize') params = { cropData: d, w: parseInt(document.getElementById('rsz-w').value)||Math.round(d.width), h: parseInt(document.getElementById('rsz-h').value)||Math.round(d.height) };
+                    if(activeTool === 'passport') {
+                        const ps = document.getElementById('ppt-photo').value.split('x'); const pp = document.getElementById('ppt-paper').value;
+                        const ppD = pp==='A4'?{w:210,h:297}:pp==='A3'?{w:297,h:420}:{w:148,h:210};
+                        params = { crop: d, photo: {w:ps[0], h:ps[1]}, paper: ppD };
+                    }
+                }
+
+                // If Rename, handle completely on main thread (string math)
+                if (activeTool === 'rename') {
+                    const p = document.getElementById('rnm-prefix').value; const s = document.getElementById('rnm-suffix').value; const n = document.getElementById('rnm-num').checked;
+                    fileQueue.forEach((item, i) => {
+                        const dot = item.name.lastIndexOf('.'); const ext = dot!==-1 ? item.name.substring(dot) : '';
+                        let base = dot!==-1 ? item.name.substring(0,dot) : item.name;
+                        if(n) base += String(i+1).padStart(3,'0');
+                        item.name = `${p}${base}${s}${ext}`;
+                    });
+                    renderQueueUI();
+                    overlay.classList.remove('active');
+                    return;
+                }
+
+                // Execute Pool
+                const totalJobs = fileQueue.length;
+                let completedJobs = 0;
+                let jobCursor = 0;
+                let newQueueState = new Array(totalJobs);
+
+                const runWorkerPool = () => new Promise((resolve) => {
+                    const assignWork = (worker) => {
+                        if (jobCursor >= totalJobs) return;
+                        const jobIndex = jobCursor++;
+                        const fileObj = fileQueue[jobIndex];
+                        
+                        worker.onmessage = (e) => {
+                            const { success, buffer, type, name, index } = e.data;
+                            if (success) {
+                                const newBlob = new Blob([buffer], { type });
+                                newQueueState[index] = { file: newBlob, name: name||fileQueue[index].name, type: type, url: URL.createObjectURL(newBlob), extBadge: (type.split('/')[1]||'IMG').toUpperCase().substring(0,4) };
+                            } else {
+                                newQueueState[index] = fileQueue[index]; // Fallback to original on error
+                            }
+                            
+                            completedJobs++;
+                            overlayText.textContent = `Applied to ${completedJobs}/${totalJobs}`;
+                            overlayFill.style.width = `${Math.round((completedJobs/totalJobs)*100)}%`;
+                            
+                            if (completedJobs === totalJobs) resolve();
+                            else assignWork(worker);
+                        };
+                        worker.postMessage({ action: activeTool, fileObj, params, index: jobIndex });
+                    };
+                    workers.forEach(w => assignWork(w));
+                });
+
+                await runWorkerPool();
+
+                // Swap State securely
+                fileQueue.forEach(item => URL.revokeObjectURL(item.url)); // Free old memory
+                fileQueue = newQueueState;
+                
+                overlay.classList.remove('active');
+                renderQueueUI();
+                renderActiveFile();
+            });
+
+            // --- 6. EXPORT / ZIP ---
+            btnExport.addEventListener('click', async () => {
+                if (fileQueue.length === 0) return;
+                overlay.classList.add('active');
+                
+                if (fileQueue.length === 1) {
+                    overlayText.textContent = "Downloading...";
+                    const a = document.createElement('a'); a.href = fileQueue[0].url; a.download = fileQueue[0].name;
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                } else {
+                    overlayText.textContent = "Zipping Pipeline...";
+                    try {
+                        const zipData = {};
+                        for (let i=0; i<fileQueue.length; i++) {
+                            overlayFill.style.width = `${Math.round((i/fileQueue.length)*100)}%`;
+                            const ab = await fileQueue[i].file.arrayBuffer();
+                            
+                            let safeName = fileQueue[i].name; let counter=1;
+                            while(zipData[safeName]){ const d=safeName.lastIndexOf('.'); const b=d!==-1?safeName.substring(0,d):safeName; const e=d!==-1?safeName.substring(d):''; safeName=`${b}_${counter}${e}`; counter++; }
+                            zipData[safeName] = new Uint8Array(ab);
+                        }
+                        overlayFill.style.width = "100%";
+                        const zippedContent = await new Promise((res, rej) => fflate.zip(zipData, { level: 0, consume: true }, (err, data) => err ? rej(err) : res(data)));
+                        const url = URL.createObjectURL(new Blob([zippedContent], { type: 'application/zip' }));
+                        const a = document.createElement('a'); a.href = url; a.download = 'Hikaru_Studio_Export.zip';
+                        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    } catch(e) { alert("ZIP failed. Memory limit reached."); }
+                }
+                setTimeout(()=>overlay.classList.remove('active'), 500);
+            });
+
+            // --- Footer Reveal Observer ---
+            const footerObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        document.getElementById('site-footer').classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            footerObserver.observe(document.getElementById('site-footer'));
+
+        });
+    </script>
+</body>
+</html>

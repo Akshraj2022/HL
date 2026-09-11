@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passport Print Sheet - Hikaru Labs</title>
+    <meta name="google-adsense-account" content="ca-pub-2865389325309773">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #050505;
+            --glass-bg: rgba(15, 15, 17, 0.4);
+            --glass-border: rgba(191, 161, 95, 0.15); 
+            --glass-hover: rgba(191, 161, 95, 0.08);
+            --accent: #bfa15f;
+            --accent-hover: #d4b472;
+            --accent-glow: rgba(191, 161, 95, 0.3);
+            --error: #ef4444;
+            --error-glow: rgba(239, 68, 68, 0.4);
+            --safe: #4ade80;
+            --text-main: #ffffff;
+            --text-muted: #a1a1aa;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+
+        body, html {
+            background: url('bg7.png') no-repeat center center fixed;
+            background-size: cover;
+            background-color: var(--bg-dark); 
+            color: var(--text-main);
+            min-height: 100vh; overflow-x: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(10, 10, 12, 0.75); z-index: -2; pointer-events: none;
+        }
+
+        #star-canvas { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
+
+        /* Navbar */
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1.2rem 4%; background: rgba(5, 5, 5, 0.6);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: 0 4px 40px rgba(0, 0, 0, 0.8), 0 1px 15px rgba(191, 161, 95, 0.1);
+            border-bottom: 1px solid var(--glass-border);
+            animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        header::after {
+            content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.8; box-shadow: 0 0 10px var(--accent);
+        }
+
+        .logo-container { display: flex; align-items: center; gap: 12px; text-decoration: none; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .logo-container:hover { transform: scale(1.03); }
+        .brand-logo { width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--accent); object-fit: cover; box-shadow: 0 0 15px var(--accent-glow), inset 0 0 8px rgba(0,0,0,0.8); background-color: #000; }
+        .logo-text { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; color: var(--text-main); }
+        .logo-text span { color: var(--accent); }
+
+        .nav-links { display: flex; gap: 2rem; align-items: center; }
+        .back-btn {
+            background: transparent; border: 1px solid var(--glass-border);
+            color: var(--text-main); padding: 0.5rem 1.2rem; border-radius: 20px;
+            font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            text-decoration: none; display: flex; align-items: center; gap: 6px;
+        }
+        .back-btn:hover { background: var(--glass-hover); border-color: rgba(191,161,95,0.4); transform: translateX(-4px); box-shadow: 0 0 15px rgba(191,161,95,0.1); }
+
+        /* Main Tool UI */
+        .tool-container { max-width: 1100px; margin: 4rem auto; padding: 0 2rem; display: flex; flex-direction: column; align-items: center; flex: 1; }
+
+        .tool-header { text-align: center; margin-bottom: 2.5rem; animation: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+        .tool-header h1 { font-size: 3.2rem; font-weight: 700; letter-spacing: -0.04em; margin-bottom: 0.8rem; text-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .tool-header p { font-size: 1.15rem; color: var(--text-muted); font-weight: 400; max-width: 650px; margin: 0 auto; line-height: 1.6; }
+        @keyframes popIn { from { opacity: 0; transform: scale(0.97) translateY(15px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        .action-card {
+            background: var(--glass-bg); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px);
+            border: 1px solid var(--glass-border); border-radius: 32px; width: 100%; padding: 3rem;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            position: relative; overflow: hidden; transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .view-state { display: none; flex-direction: column; align-items: center; width: 100%; }
+        .view-state.active { display: flex; animation: fastScaleIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        @keyframes fastScaleIn { 0% { opacity: 0; transform: scale(0.98) translateY(10px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+
+        /* Upload View */
+        .drop-zone {
+            background: linear-gradient(145deg, rgba(20,20,22,0.4), rgba(5,5,7,0.6));
+            border: 1px solid var(--glass-border); border-radius: 20px;
+            width: 100%; height: 300px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 1rem;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); cursor: pointer; position: relative; overflow: hidden;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5); max-width: 800px; margin: 0 auto;
+        }
+        .drop-zone::before { content: ''; position: absolute; inset: 0; border: 2px dashed rgba(191, 161, 95, 0.2); border-radius: 20px; pointer-events: none; transition: border-color 0.3s ease; }
+        .drop-zone.dragover { background: linear-gradient(145deg, rgba(30,25,20,0.6), rgba(15,12,10,0.8)); animation: pulseGlow 1.5s infinite alternate; transform: scale(1.01); }
+        .drop-zone.dragover::before { border-color: var(--accent); }
+        
+        .drop-icon { width: 72px; height: 72px; color: var(--accent); filter: drop-shadow(0 0 10px rgba(191,161,95,0.4)); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .drop-zone:hover .drop-icon { transform: translateY(-8px) scale(1.1); filter: drop-shadow(0 5px 15px rgba(191,161,95,0.6)); }
+        .drop-zone h3 { font-size: 1.5rem; font-weight: 600; color: #fff; pointer-events: none; margin-top: 0.5rem; }
+        .drop-zone p { font-size: 0.95rem; color: var(--text-muted); pointer-events: none; margin-bottom: 1rem; }
+
+        /* Interactive Editor View */
+        .editor-layout { display: flex; gap: 2.5rem; width: 100%; align-items: stretch; }
+        
+        .preview-wrapper {
+            flex: 1; background: rgba(0,0,0,0.6); border-radius: 20px; 
+            border: 1px solid var(--glass-border); overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 480px; box-shadow: inset 0 0 30px rgba(0,0,0,0.8);
+            position: relative; padding: 1.5rem;
+        }
+        
+        #image-workspace { max-width: 100%; max-height: 480px; display: block; }
+        
+        /* Sidebar Controls */
+        .controls-sidebar {
+            width: 340px; display: flex; flex-direction: column; gap: 1.5rem;
+            background: rgba(0,0,0,0.3); padding: 1.8rem; border-radius: 20px; border: 1px solid var(--glass-border);
+        }
+
+        .control-group { display: flex; flex-direction: column; gap: 0.8rem; }
+        .control-label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Custom Inputs */
+        .flat-select {
+            background: rgba(0,0,0,0.6); border: 1px solid var(--glass-border); 
+            border-radius: 12px; color: var(--text-main); padding: 0.8rem 1rem; 
+            font-size: 1rem; outline: none; transition: all 0.2s; width: 100%;
+            appearance: none; cursor: pointer;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23bfa15f%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E"); 
+            background-repeat: no-repeat; background-position: right 1rem top 50%; background-size: 0.65rem auto;
+        }
+        .flat-select:focus { border-color: var(--accent); box-shadow: 0 0 15px rgba(191,161,95,0.15); }
+        .flat-select option { background: var(--bg-dark); color: var(--text-main); }
+
+        /* Cropper Theme Override */
+        .cropper-view-box, .cropper-face { border: 2px solid var(--accent); outline: none; border-radius: 4px; }
+        .cropper-point { background-color: var(--accent); width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 8px var(--accent-glow); }
+        .cropper-line { background-color: var(--accent); opacity: 0.6; }
+        .cropper-modal { background: rgba(5,5,5,0.85); }
+        .cropper-center::before, .cropper-center::after { background-color: var(--accent); }
+
+        /* Warning Text inside sidebar */
+        .resolution-warning {
+            display: none; align-items: flex-start; gap: 10px;
+            background: rgba(239, 68, 68, 0.1); border: 1px solid var(--error);
+            color: var(--error); padding: 1rem; border-radius: 12px; font-size: 0.8rem;
+            line-height: 1.4; margin-top: 1rem; box-shadow: 0 0 15px var(--error-glow);
+        }
+        .resolution-warning.visible { display: flex; }
+
+        /* Buttons */
+        .primary-btn {
+            background: linear-gradient(135deg, #2a2a2d 0%, #1a1a1c 100%); 
+            border: 1px solid rgba(191, 161, 95, 0.4); color: var(--accent);
+            padding: 1rem 2.5rem; border-radius: 30px; font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4), 0 0 15px rgba(191, 161, 95, 0.15); width: 100%;
+        }
+        .primary-btn:hover { 
+            background: linear-gradient(135deg, #323236 0%, #222225 100%); border-color: var(--accent);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5), 0 0 30px rgba(191, 161, 95, 0.4); transform: translateY(-3px) scale(1.02); 
+        }
+        .primary-btn:active { transform: scale(0.97); }
+        .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; border-color: var(--glass-border); color: var(--text-muted); }
+
+        .secondary-btn {
+            background: transparent; border: 1px solid var(--glass-border); color: var(--text-main);
+            padding: 1rem 2.5rem; border-radius: 30px; font-size: 1rem; font-weight: 500; 
+            cursor: pointer; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); width: 100%;
+        }
+        .secondary-btn:hover { background: rgba(255,255,255,0.03); border-color: rgba(191,161,95,0.5); transform: translateY(-3px) scale(1.02); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+        .btn-group { display: flex; gap: 1.2rem; justify-content: center; margin-top: 1.5rem; }
+
+        /* Processing */
+        .progress-container { width: 100%; max-width: 450px; margin: 2rem 0; }
+        .progress-track { width: 100%; height: 6px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; position: relative; }
+        .progress-fill { height: 100%; background: var(--accent); width: 0%; box-shadow: 0 0 20px var(--accent); transition: width 0.1s linear; }
+        .progress-text { font-size: 1.3rem; font-weight: 600; color: #fff; text-align: center; margin-bottom: 0.8rem; letter-spacing: 0.02em; }
+        
+        /* Download View */
+        .success-icon { width: 85px; height: 85px; color: var(--accent); margin-bottom: 1.5rem; filter: drop-shadow(0 0 20px rgba(191,161,95,0.4)); animation: popBounce 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        @keyframes popBounce { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1); } }
+        .download-title { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+        
+        .final-preview-box {
+            background: #fff; /* White background to emulate paper */
+            padding: 10px; border-radius: 8px; margin: 2rem 0;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.8), 0 0 20px rgba(255,255,255,0.1);
+            max-width: 300px;
+        }
+        .final-preview-box img { width: 100%; display: block; border: 1px solid #ccc; }
+
+        @media (max-width: 900px) {
+            .editor-layout { flex-direction: column; }
+            .controls-sidebar { width: 100%; }
+            .action-card { padding: 2rem 1.5rem; }
+            .tool-header h1 { font-size: 2.4rem; }
+            .btn-group { flex-direction: column; }
+        }
+
+        /* --- Preloader Styles --- */
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: var(--bg-dark); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 9999; 
+            transition: opacity 0.5s ease, visibility 0.5s ease; gap: 1.5rem;
+        }
+        .loader-ring { width: 60px; height: 60px; border: 3px solid rgba(191, 161, 95, 0.1); border-radius: 50%; border-top-color: var(--accent); box-shadow: 0 0 20px var(--accent-glow); animation: spinLoader 1s linear infinite; }
+        .loader-text { font-size: 1rem; font-weight: 500; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; text-shadow: 0 0 10px var(--accent-glow); animation: pulseText 1.5s ease-in-out infinite alternate; }
+        @keyframes spinLoader { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes pulseText { from { opacity: 0.5; } to { opacity: 1; } }
+        #preloader.fade-out { opacity: 0; visibility: hidden; }
+
+        /* Footer */
+        .site-footer { width: 100%; padding: 4rem 2rem 2rem; border-top: 1px solid rgba(255, 255, 255, 0.05); text-align: center; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(20px); opacity: 0; transform: translateY(20px); transition: all 0.8s ease; margin-top: auto; }
+        .site-footer.visible { opacity: 1; transform: translateY(0); }
+        .footer-links { display: flex; justify-content: center; gap: 2rem; margin-bottom: 2rem; flex-wrap: wrap; }
+        .footer-links a { color: var(--text-muted); text-decoration: none; font-size: 0.85rem; font-weight: 500; transition: color 0.2s; }
+        .footer-links a:hover { color: var(--text-main); }
+        .footer-socials { display: flex; justify-content: center; gap: 1.5rem; margin-bottom: 2rem; }
+        .social-icon { width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; color: var(--text-muted); transition: all 0.3s; }
+        .social-icon svg { width: 18px; height: 18px; fill: currentColor; }
+        .social-icon:hover { color: var(--accent); border-color: var(--accent); transform: translateY(-3px); box-shadow: 0 5px 15px var(--accent-glow); }
+        .footer-copy { color: #555; font-size: 0.75rem; }
+    </style>
+</head>
+<body>
+
+    <div id="preloader">
+        <div class="loader-ring"></div>
+        <div class="loader-text">Hikaru Labs</div>
+    </div>
+
+    <canvas id="star-canvas"></canvas>
+
+    <header>
+        <a href="browse.html" class="logo-container">
+            <img src="logo.png" alt="Hikaru Labs Logo" class="brand-logo" onerror="this.src='https://i.postimg.cc/7LRMnvPK/Untitled-design-(1).png'" />
+            <div class="logo-text">Hikaru <span>Labs</span></div>
+        </a>
+        <nav class="nav-links">
+            <a href="browse.html" class="back-btn">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                Back
+            </a>
+        </nav>
+    </header>
+
+    <main class="tool-container">
+        <div class="tool-header">
+            <h1>Passport Print Sheet</h1>
+            <p>Generate high-resolution A4, A3, or A5 print-ready sheets perfectly aligned to strict biometric grids.</p>
+        </div>
+
+        <div class="action-card" id="main-card">
+            
+            
+            <!-- Ad Container -->
+            <div id="ad-container-top" style="min-height: 90px; margin: 15px auto; width: 100%; max-width: 728px; text-align: center; display: flex; justify-content: center; align-items: center; z-index: 10;"></div>
+
+            <div id="view-upload" class="view-state active">
+                <div class="drop-zone" id="drop-zone">
+                    <svg class="drop-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm5 12H7v-1.5c0-2.33 4.67-3.5 7-3.5s7 1.17 7 3.5V18z"/></svg>
+                    <h3>Upload Subject Photo</h3>
+                    <p>High-resolution portrait recommended</p>
+                    <button class="primary-btn" style="width: auto;" id="browse-btn">Select Image</button>
+                    <input type="file" id="file-input" accept="image/jpeg, image/png, image/webp" hidden>
+                </div>
+            </div>
+
+            <div id="view-editor" class="view-state">
+                <div class="editor-layout">
+                    
+                    <div class="preview-wrapper">
+                        <img id="image-workspace" src="" alt="Editor Workspace">
+                    </div>
+
+                    <div class="controls-sidebar">
+                        
+                        <div class="control-group">
+                            <span class="control-label">Biometric Standard Size</span>
+                            <select id="photo-size-select" class="flat-select">
+                                <option value="35x45">35 x 45 mm (Standard EU/UK/IN)</option>
+                                <option value="51x51">2 x 2 inch (51 x 51 mm - US Standard)</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group" style="margin-top: 1rem;">
+                            <span class="control-label">Target Print Sheet</span>
+                            <select id="paper-size-select" class="flat-select">
+                                <option value="A4">A4 Sheet (210 x 297 mm)</option>
+                                <option value="A3">A3 Sheet (297 x 420 mm)</option>
+                                <option value="A5">A5 Sheet (148 x 210 mm)</option>
+                            </select>
+                        </div>
+
+                        <div class="resolution-warning" id="res-warning">
+                            <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor" style="flex-shrink:0;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                            <div>
+                                <strong>Low Resolution Detected</strong><br>
+                                Your cropped area is smaller than the required 300 DPI target. The final print may appear blurry.
+                            </div>
+                        </div>
+
+                        <div style="margin-top: auto; padding-top: 1.5rem;">
+                            <button class="primary-btn" id="process-btn">Generate Print Sheet</button>
+                            <button class="secondary-btn" id="cancel-btn" style="margin-top: 1rem;">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-processing" class="view-state">
+                <div class="progress-text" id="progress-text">Generating Canvas Grid...</div>
+                <div class="progress-container">
+                    <div class="progress-track">
+                        <div class="progress-fill" id="progress-fill" style="width: 100%; animation: pulseFill 1s infinite alternate;"></div>
+                    </div>
+                </div>
+                <p style="color: var(--accent); margin-top: 0.5rem; font-size: 0.95rem; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;">Rendering 300 DPI Output...</p>
+            </div>
+            <style> @keyframes pulseFill { from { opacity: 0.6; } to { opacity: 1; box-shadow: 0 0 30px var(--accent); } } </style>
+
+            <div id="view-download" class="view-state">
+                <svg class="success-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                <h3 class="download-title">Sheet Ready for Print</h3>
+                <p style="color: var(--text-muted);">High-resolution matrix successfully calculated on your device.</p>
+                
+                <div class="final-preview-box">
+                    <img id="final-sheet-preview" src="" alt="Print Sheet Preview">
+                </div>
+
+                <div class="btn-group">
+                    <button class="primary-btn" id="download-btn">Download High-Res JPG</button>
+                    <button class="secondary-btn" id="reset-btn">Create Another</button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="site-footer" id="site-footer">
+        <div class="footer-links">
+            <a href="story.html">Our Story</a>
+            <a href="Privacy Policy.pdf" target="_blank">Privacy Policy</a>
+            <a href="Terms & Condition.pdf" target="_blank">Terms & Conditions</a>
+            <a href="mailto:aksh@hikarulabs.xyz">Contact Us</a>
+        </div>
+        <div class="footer-socials">
+            <a href="https://www.instagram.com/hikarulabs/" target="_blank" class="social-icon" aria-label="Instagram">
+                <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            </a>
+            <a href="https://www.linkedin.com/company/hikaru-labs/" target="_blank" class="social-icon" aria-label="LinkedIn">
+                <svg viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+            </a>
+            <a href="https://x.com/Hikaru_Labs" target="_blank" class="social-icon" aria-label="X">
+                <svg viewBox="0 0 24 24"><path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z"/></svg>
+            </a>
+        </div>
+        <p class="footer-copy">© 2026 Hikaru Labs. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // --- Firebase Init ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyCSVt_JqH2vsqFLuT5xDOQQUyxU11QMKak",
+            authDomain: "hikaru-auth.firebaseapp.com",
+            projectId: "hikaru-auth",
+            storageBucket: "hikaru-auth.firebasestorage.app",
+            messagingSenderId: "906310702181",
+            appId: "1:906310702181:web:16ec0e0b5cff635854a28c",
+            measurementId: "G-4MSLFECF5S"
+        };
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // --- Fast Encryption Engine ---
+        const CIPHER_KEY = "HIKARU_LOCAL_FIRST";
+        function hikaruDecrypt(base64Str) {
+            try {
+                let text = atob(base64Str);
+                let result = "";
+                for(let i = 0; i < text.length; i++) {
+                    result += String.fromCharCode(text.charCodeAt(i) ^ CIPHER_KEY.charCodeAt(i % CIPHER_KEY.length));
+                }
+                return JSON.parse(result);
+            } catch (e) { return null; }
+        }
+
+        // Limits Logic State
+        let activeTargetUid = null;
+        let userPlan = 'free';
+        let totalSyncedUsage = 0;
+        let pendingUsageBytes = 0;
+        const LIMIT_1GB = 1024 * 1024 * 1024;
+
+        // --- Web Worker String: Offscreen Render Matrix & Zero-Copy ArrayBuffer Transfer ---
+        const workerCode = `
+            let sharedCropCanvas = null;
+            let sharedMasterCanvas = null;
+
+            self.onmessage = async function(e) {
+                const { file, cropData, photoSpec, paperSpec, DPI } = e.data;
+                try {
+                    const MM_TO_PX = DPI / 25.4;
+                    const targetCropW = Math.round(photoSpec.w * MM_TO_PX);
+                    const targetCropH = Math.round(photoSpec.h * MM_TO_PX);
+                    
+                    const paperPxW = Math.round(paperSpec.w * MM_TO_PX);
+                    const paperPxH = Math.round(paperSpec.h * MM_TO_PX);
+
+                    const gapPx = Math.round(5 * MM_TO_PX); 
+                    const marginPx = Math.round(10 * MM_TO_PX);
+
+                    const availableW = paperPxW - (marginPx * 2);
+                    const availableH = paperPxH - (marginPx * 2);
+
+                    const cols = Math.floor((availableW + gapPx) / (targetCropW + gapPx));
+                    const rows = Math.floor((availableH + gapPx) / (targetCropH + gapPx));
+
+                    const blockW = (cols * targetCropW) + ((cols - 1) * gapPx);
+                    const blockH = (rows * targetCropH) + ((rows - 1) * gapPx);
+                    
+                    const startX = Math.round((paperPxW - blockW) / 2);
+                    const startY = Math.round((paperPxH - blockH) / 2);
+
+                    // Decode original photo in background space
+                    const bitmap = await createImageBitmap(file);
+
+                    // Initialize or resize reusable background crop layer
+                    if (!sharedCropCanvas) sharedCropCanvas = new OffscreenCanvas(targetCropW, targetCropH);
+                    sharedCropCanvas.width = targetCropW; 
+                    sharedCropCanvas.height = targetCropH;
+                    
+                    const cropCtx = sharedCropCanvas.getContext('2d', { willReadFrequently: true });
+                    cropCtx.drawImage(bitmap, cropData.x, cropData.y, cropData.width, cropData.height, 0, 0, targetCropW, targetCropH);
+                    bitmap.close(); // Dispose source frame pointer immediately
+
+                    // Initialize or resize master composite background canvas
+                    if (!sharedMasterCanvas) sharedMasterCanvas = new OffscreenCanvas(paperPxW, paperPxH);
+                    sharedMasterCanvas.width = paperPxW; 
+                    sharedMasterCanvas.height = paperPxH;
+                    
+                    const ctx = sharedMasterCanvas.getContext('2d', { alpha: false, willReadFrequently: true });
+
+                    // Paint background sheet standard pure white
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, paperPxW, paperPxH);
+
+                    ctx.strokeStyle = '#cccccc';
+                    ctx.lineWidth = 2;
+
+                    // Stamp the grid matrix seamlessly
+                    for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < cols; c++) {
+                            const x = startX + (c * (targetCropW + gapPx));
+                            const y = startY + (r * (targetCropH + gapPx));
+                            
+                            ctx.drawImage(sharedCropCanvas, x, y, targetCropW, targetCropH);
+                            ctx.strokeRect(x, y, targetCropW, targetCropH); 
+                        }
+                    }
+
+                    // Flush temporary crop layer dimensions to zero space out memory heap allocation
+                    sharedCropCanvas.width = 1; sharedCropCanvas.height = 1;
+
+                    // Generate clean high-resolution file slice
+                    const blob = await sharedMasterCanvas.convertToBlob({ type: 'image/jpeg', quality: 1.0 });
+                    
+                    // Flush main layout template arrays to protect system architecture from spikes
+                    sharedMasterCanvas.width = 1; sharedMasterCanvas.height = 1;
+
+                    // Extract array reference buffer and send ownership down the execution stack
+                    const buffer = await blob.arrayBuffer();
+                    self.postMessage({ success: true, buffer: buffer }, [buffer]);
+
+                } catch (err) {
+                    self.postMessage({ success: false, error: err.message });
+                }
+            };
+        `;
+        const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(workerBlob);
+        const matrixWorker = new Worker(workerUrl);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const preloader = document.getElementById('preloader');
+            window.addEventListener('load', () => preloader.classList.add('fade-out'));
+
+            // --- Authentication & Session Limits Check ---
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlToken = urlParams.get('sess_token');
+            const storedToken = sessionStorage.getItem('hikaru_token');
+            const activeToken = urlToken || storedToken;
+            let activeSession = null;
+
+            if (activeToken) activeSession = hikaruDecrypt(activeToken);
+
+            if (activeSession) {
+                if (urlToken) {
+                    sessionStorage.setItem('hikaru_token', urlToken);
+                    window.history.replaceState({}, document.title, window.location.pathname);
+                }
+                activeTargetUid = activeSession.uid;
+                fetchUserPlanAndLimits(activeTargetUid);
+            } else {
+                auth.onAuthStateChanged((user) => {
+                    if (user) {
+                        activeTargetUid = user.uid;
+                        fetchUserPlanAndLimits(activeTargetUid);
+                    } else {
+                        window.location.href = "sign.html";
+                    }
+                });
+            }
+
+            async function fetchUserPlanAndLimits(uid) {
+                try {
+                    const doc = await db.collection('users').doc(uid).get();
+                    if (doc.exists) {
+                        const data = doc.data();
+                        userPlan = (data.plan || 'free').toLowerCase();
+
+                        if (userPlan === 'free' && !window._adsterraInjected) {
+                            window._adsterraInjected = true;
+                            try {
+                                const adScript = document.createElement('script');
+                                adScript.src = "https://www.profitableratecpmnetwork.com/qyxu8icy?key=6223f4d35e0dcf2d19f549cb2f916281";
+                                adScript.async = true;
+                                adScript.defer = true;
+                                adScript.onerror = function() { console.warn("Ad blocked or failed to load"); };
+                                document.body.appendChild(adScript);
+                            } catch (e) {
+                                console.warn("Failed to inject ad script", e);
+                            }
+                        }
+
+                        totalSyncedUsage = data.dailyUsage || 0;
+                        checkLimits();
+                    }
+                } catch (error) {
+                    console.error("Error fetching user data:", error);
+                }
+            }
+
+            function checkLimits() {
+                if (userPlan === 'free' && totalSyncedUsage >= LIMIT_1GB) {
+                    alert("Daily 1GB limit reached for Free Plan. Please upgrade to continue processing.");
+                    document.getElementById('file-input').disabled = true;
+                    document.getElementById('browse-btn').disabled = true;
+                }
+            }
+
+            // Sync usage every 10 seconds
+            setInterval(async () => {
+                if (pendingUsageBytes > 0 && activeTargetUid) {
+                    try {
+                        const docRef = db.collection('users').doc(activeTargetUid);
+                        const doc = await docRef.get();
+                        let currentUsage = doc.data()?.dailyUsage || 0;
+                        let newUsage = currentUsage + pendingUsageBytes;
+                        
+                        await docRef.set({
+                            dailyUsage: newUsage,
+                            lastSync: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                        
+                        totalSyncedUsage = newUsage;
+                        pendingUsageBytes = 0; // Reset pending
+                        checkLimits();
+                    } catch (e) {
+                        console.error("Error syncing limits:", e);
+                    }
+                }
+            }, 10000);
+
+            // UI Elements
+            const viewUpload = document.getElementById('view-upload');
+            const viewEditor = document.getElementById('view-editor');
+            const viewProcessing = document.getElementById('view-processing');
+            const viewDownload = document.getElementById('view-download');
+            
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const browseBtn = document.getElementById('browse-btn');
+            
+            const imageWorkspace = document.getElementById('image-workspace');
+            const photoSizeSelect = document.getElementById('photo-size-select');
+            const paperSizeSelect = document.getElementById('paper-size-select');
+            const resWarning = document.getElementById('res-warning');
+            
+            const processBtn = document.getElementById('process-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const downloadBtn = document.getElementById('download-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            
+            const finalSheetPreview = document.getElementById('final-sheet-preview');
+
+            // State
+            let cropper = null;
+            let currentUploadedFile = null;
+            let finalBlobUrl = null;
+            let finalFileName = '';
+
+            const DPI = 300;
+            const MM_TO_PX = DPI / 25.4;
+
+            const PAPER_SIZES = {
+                'A3': { w: 297, h: 420 },
+                'A4': { w: 210, h: 297 },
+                'A5': { w: 148, h: 210 }
+            };
+
+            const PHOTO_SIZES = {
+                '35x45': { w: 35, h: 45, ratio: 35/45 },
+                '51x51': { w: 51, h: 51, ratio: 1/1 }
+            };
+
+            const switchView = (viewId) => {
+                [viewUpload, viewEditor, viewProcessing, viewDownload].forEach(el => el.classList.remove('active'));
+                document.getElementById(viewId).classList.add('active');
+            };
+
+            // Drag & Drop
+            const preventDefaults = (e) => { e.preventDefault(); e.stopPropagation(); };
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => { dropZone.addEventListener(e, preventDefaults, false); document.body.addEventListener(e, preventDefaults, false); });
+            ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('dragover')));
+            ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('dragover')));
+            
+            dropZone.addEventListener('drop', (e) => { if (e.dataTransfer.files.length > 0 && !fileInput.disabled) loadEditor(e.dataTransfer.files[0]); });
+            browseBtn.addEventListener('click', () => { if (!browseBtn.disabled) fileInput.click(); });
+            dropZone.addEventListener('click', (e) => { if (!fileInput.disabled && e.target !== browseBtn && e.target !== fileInput) fileInput.click(); });
+            fileInput.addEventListener('change', function() { if (this.files.length > 0) loadEditor(this.files[0]); this.value = ''; });
+
+            // Initialize Interactive Crop Space
+            const loadEditor = (file) => {
+                if (!file.type.startsWith('image/')) { alert("Please upload an image portrait."); return; }
+                
+                // Enforce immediately before queuing if limit reached
+                if (userPlan === 'free' && (totalSyncedUsage + pendingUsageBytes + file.size) > LIMIT_1GB) {
+                    alert("This file exceeds your daily 1GB limit on the Free Plan. Please upgrade.");
+                    return;
+                }
+                
+                pendingUsageBytes += file.size; // Track usage for the 10s sync
+
+                currentUploadedFile = file;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imageWorkspace.src = e.target.result;
+                    switchView('view-editor');
+                    
+                    if (cropper) cropper.destroy();
+                    imageWorkspace.onload = () => { initCropper(); };
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const initCropper = () => {
+                const sizeKey = photoSizeSelect.value;
+                const ratio = PHOTO_SIZES[sizeKey].ratio;
+
+                cropper = new Cropper(imageWorkspace, {
+                    viewMode: 1,
+                    dragMode: 'move',
+                    aspectRatio: ratio,
+                    autoCropArea: 0.8,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false,
+                    crop(event) {
+                        checkResolution(event.detail.width, event.detail.height);
+                    }
+                });
+            };
+
+            photoSizeSelect.addEventListener('change', () => {
+                if (cropper) {
+                    const ratio = PHOTO_SIZES[photoSizeSelect.value].ratio;
+                    cropper.setAspectRatio(ratio);
+                }
+            });
+
+            const checkResolution = (cropW, cropH) => {
+                const targetSpec = PHOTO_SIZES[photoSizeSelect.value];
+                const requiredW = targetSpec.w * MM_TO_PX;
+                
+                if (cropW < (requiredW * 0.9)) {
+                    resWarning.classList.add('visible');
+                    processBtn.style.boxShadow = "0 0 15px rgba(239, 68, 68, 0.4)";
+                    processBtn.style.borderColor = "var(--error)";
+                } else {
+                    resWarning.classList.remove('visible');
+                    processBtn.style.boxShadow = "0 8px 20px rgba(0,0,0,0.4), 0 0 15px rgba(191, 161, 95, 0.15)";
+                    processBtn.style.borderColor = "rgba(191, 161, 95, 0.4)";
+                }
+            };
+
+            // Background Thread Execution Trigger
+            processBtn.addEventListener('click', () => {
+                if (!cropper || !currentUploadedFile) return;
+                switchView('view-processing');
+
+                // Extract rounded coordinate bounds relative to the raw native input file map resolution
+                const cropData = cropper.getData(true);
+                const photoSpec = PHOTO_SIZES[photoSizeSelect.value];
+                const paperSpec = PAPER_SIZES[paperSizeSelect.value];
+
+                matrixWorker.onmessage = (e) => {
+                    const { success, buffer, error } = e.data;
+                    
+                    if (success) {
+                        if (finalBlobUrl) URL.revokeObjectURL(finalBlobUrl);
+                        
+                        const fileBlob = new Blob([buffer], { type: 'image/jpeg' });
+                        finalBlobUrl = URL.createObjectURL(fileBlob);
+                        finalFileName = `Hikaru_Passport_${paperSizeSelect.value}_Sheet.jpg`;
+                        
+                        finalSheetPreview.src = finalBlobUrl;
+                        switchView('view-download');
+                    } else {
+                        alert("Sheet generation failure: " + (error || "Unknown pipeline hang."));
+                        resetApp();
+                    }
+                };
+
+                // Trigger generation payload pass
+                matrixWorker.postMessage({
+                    file: currentUploadedFile,
+                    cropData,
+                    photoSpec,
+                    paperSpec,
+                    DPI
+                });
+            });
+
+            const resetApp = () => {
+                if (cropper) { cropper.destroy(); cropper = null; }
+                if (finalBlobUrl) URL.revokeObjectURL(finalBlobUrl);
+                currentUploadedFile = null;
+                switchView('view-upload');
+            };
+
+            cancelBtn.addEventListener('click', resetApp);
+            resetBtn.addEventListener('click', resetApp);
+
+            downloadBtn.addEventListener('click', () => {
+                if (!finalBlobUrl) return;
+                const a = document.createElement('a');
+                a.href = finalBlobUrl;
+                a.download = finalFileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            // Star Animation
+            const canvas = document.getElementById('star-canvas'); const ctx = canvas.getContext('2d');
+            let stars = []; let mouse = { x: -1000, y: -1000 };
+            window.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; });
+            
+            function initStars() {
+                canvas.width = window.innerWidth; canvas.height = window.innerHeight; stars = [];
+                for(let i = 0; i < 180; i++) { stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, radius: Math.random() * 2, speedX: (Math.random() - 0.5) * 0.5, speedY: (Math.random() - 0.5) * 0.5, opacity: Math.random() * 0.8 + 0.2 }); }
+            }
+
+            function animateStars() {
+                ctx.fillStyle = 'rgba(5, 5, 5, 0.2)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                for(let i = 0; i < stars.length; i++) {
+                    let s = stars[i]; let dx = s.x - mouse.x; let dy = s.y - mouse.y; let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 150) { s.x += (dx / dist) * 1.5; s.y += (dy / dist) * 1.5; }
+                    s.x += s.speedX; s.y += s.speedY;
+                    if(s.x < 0) s.x = canvas.width; if(s.x > canvas.width) s.x = 0;
+                    if(s.y < 0) s.y = canvas.height; if(s.y > canvas.height) s.y = 0;
+                    
+                    ctx.beginPath(); ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                    ctx.shadowBlur = s.radius * 6; ctx.shadowColor = '#bfa15f'; ctx.fillStyle = `rgba(191, 161, 95, ${s.opacity})`; ctx.fill(); ctx.shadowBlur = 0;
+                    
+                    s.opacity += (Math.random() - 0.5) * 0.05;
+                    if (s.opacity < 0.2) s.opacity = 0.2; if (s.opacity > 1) s.opacity = 1;
+                }
+                requestAnimationFrame(animateStars);
+            }
+            window.addEventListener('resize', initStars); initStars(); animateStars();
+
+            // Footer Reveal Observer
+            const footerObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        document.getElementById('site-footer').classList.add('visible');
+                    }
+                });
+            }, { threshold: 0.1 });
+            
+            footerObserver.observe(document.getElementById('site-footer'));
+        });
+    </script>
+</body>
+</html>
