@@ -489,7 +489,7 @@
         for (let i = 0; i < maxWorkers; i++) workerPool.push(new Worker(workerUrl));
 
         document.addEventListener('DOMContentLoaded', () => {
-            window.addEventListener('load', () => document.getElementById('preloader').classList.add('fade-out'));
+            window.addEventListener('load', () => document.getElementById('preloader').classList.add('fade-out')); setTimeout(() => { const p = document.getElementById('preloader'); if(p) p.classList.add('fade-out'); }, 2000);
 
             // Auth Check
             const activeToken = new URLSearchParams(window.location.search).get('sess_token') || sessionStorage.getItem('hikaru_token');

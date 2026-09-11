@@ -504,7 +504,7 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const preloader = document.getElementById('preloader');
-            window.addEventListener('load', () => preloader.classList.add('fade-out'));
+            window.addEventListener('load', () => preloader.classList.add('fade-out')); setTimeout(() => { if(preloader) preloader.classList.add('fade-out'); }, 2000);
 
             // --- Authentication & Session Limits Check ---
             const urlParams = new URLSearchParams(window.location.search);

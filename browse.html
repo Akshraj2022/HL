@@ -387,10 +387,12 @@
 
     <script>
         // --- Preloader Removal ---
-        window.addEventListener('load', () => {
+        const hidePreloader = () => {
             const preloader = document.getElementById('preloader');
             if(preloader) preloader.classList.add('fade-out');
-        });
+        };
+        window.addEventListener('load', hidePreloader);
+        setTimeout(hidePreloader, 2000); // Fallback if load event hangs
 
         // --- Firebase Config ---
         const firebaseConfig = {
