@@ -296,6 +296,10 @@
         <div class="action-card" id="main-card">
             
             
+            
+            <!-- Native Banner Container -->
+            <div id="container-2ba1c9016f96b1de6d694f4502c2acba" style="margin: 15px auto; text-align: center; display: flex; justify-content: center;"></div>
+
             <!-- Ad Container -->
             <div id="ad-container-top" style="min-height: 90px; margin: 15px auto; width: 100%; max-width: 728px; text-align: center; display: flex; justify-content: center; align-items: center; z-index: 10;"></div>
 
@@ -545,6 +549,34 @@
 
                         if (userPlan === 'free' && !window._adsterraInjected) {
                             window._adsterraInjected = true;
+                            // Additional Adsterra Ads
+                            if (!window._extraAdsInjected) {
+                                window._extraAdsInjected = true;
+                                try {
+                                    const pop = document.createElement('script');
+                                    pop.src = "https://pl31295622.profitableratecpmnetwork.com/12/29/0a/12290a8bc47bcb02bb5d23c4c91caf38.js";
+                                    document.body.appendChild(pop);
+
+                                    const soc = document.createElement('script');
+                                    soc.src = "https://pl31295623.profitableratecpmnetwork.com/26/04/ec/2604ec6bd015a176a079a7bd0b59ce73.js";
+                                    document.body.appendChild(soc);
+
+                                    const nat = document.createElement('script');
+                                    nat.async = true;
+                                    nat.setAttribute('data-cfasync', 'false');
+                                    nat.src = "https://pl31295625.profitableratecpmnetwork.com/2ba1c9016f96b1de6d694f4502c2acba/invoke.js";
+                                    document.body.appendChild(nat);
+                                    
+                                    // Smartlink click handler (one-time)
+                                    document.addEventListener('click', function smartlinkHandler(e) {
+                                        window.open("https://www.profitableratecpmnetwork.com/nrh5dkbu?key=b77a4478805a106c32e2bd2cf907fda7", "_blank");
+                                        document.removeEventListener('click', smartlinkHandler);
+                                    }, {once: true});
+                                } catch(e) {
+                                    console.warn("Failed to load additional ads", e);
+                                }
+                            }
+
                             try {
                                 const adScript = document.createElement('script');
                                 adScript.src = "https://www.profitableratecpmnetwork.com/qyxu8icy?key=6223f4d35e0dcf2d19f549cb2f916281";
