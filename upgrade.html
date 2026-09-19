@@ -154,6 +154,24 @@
         <div class="loader-text">Hikaru Labs</div>
     </div>
 
+    <!-- Bank Transfer Modal -->
+    <div id="bank-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(5px);">
+        <div style="background: var(--glass-bg); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); border: 1px solid var(--glass-border); padding: 2.5rem; border-radius: 20px; max-width: 500px; width: 90%; color: white; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.8);">
+            <button onclick="document.getElementById('bank-modal').style.display='none'" style="position: absolute; top: 15px; right: 20px; background: transparent; border: none; color: var(--text-muted); font-size: 1.8rem; cursor: pointer;">&times;</button>
+            <h2 style="color: var(--accent); margin-bottom: 0.5rem;">International Bank Transfer</h2>
+            <p style="color: var(--text-muted); margin-bottom: 1.5rem; font-size: 0.95rem;">Transfer the exact amount to the virtual account below provided by Razorpay.</p>
+            
+            <div id="bank-details" style="background: rgba(0,0,0,0.5); padding: 1.5rem; border-radius: 12px; font-family: monospace; font-size: 1.1rem; line-height: 1.8; margin-bottom: 2rem; border: 1px solid rgba(191,161,95,0.2);">
+                <!-- Details injected via JS -->
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button onclick="document.getElementById('bank-modal').style.display='none'; alert('Please contact support@hikarulabs.xyz after making the transfer to activate your plan manually.');" style="padding: 1rem; background: var(--accent); color: black; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;">I have completed the transfer</button>
+                <button onclick="proceedWithRazorpay()" style="padding: 1rem; background: transparent; color: var(--text-main); border: 1px solid var(--glass-border); border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;">Pay via Card/Wallet Instead</button>
+            </div>
+        </div>
+    </div>
+
     <canvas id="star-canvas"></canvas>
 
     <header>
@@ -173,6 +191,23 @@
         <div class="pricing-header">
             <h1>Select your workspace plan</h1>
             <p>Upgrade your local processing power and unlock professional features.</p>
+            <div style="margin-top: 1.5rem; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                <label for="currency-selector" style="color: var(--text-muted); font-size: 0.95rem;">Currency:</label>
+                <select id="currency-selector" onchange="updatePrices(this.value)" style="padding: 0.5rem 1rem; border-radius: 8px; background: var(--glass-bg); color: var(--text-main); border: 1px solid var(--glass-border); cursor: pointer; outline: none;">
+                    <option value="INR">🇮🇳 INR (₹)</option>
+                    <option value="USD">🇺🇸 USD ($)</option>
+                    <option value="GBP">🇬🇧 GBP (£)</option>
+                    <option value="EUR">🇪🇺 EUR (€)</option>
+                    <option value="CAD">🇨🇦 CAD ($)</option>
+                    <option value="AUD">🇦🇺 AUD ($)</option>
+                    <option value="DKK">🇩🇰 DKK (kr)</option>
+                    <option value="AED">🇦🇪 AED (د.إ)</option>
+                    <option value="SGD">🇸🇬 SGD ($)</option>
+                    <option value="CNY">🇨🇳 CNY (¥)</option>
+                    <option value="CHF">🇨🇭 CHF (Fr)</option>
+                    <option value="SEK">🇸🇪 SEK (kr)</option>
+                </select>
+            </div>
         </div>
 
         <div class="pricing-grid">
@@ -246,20 +281,70 @@
     </main>
 
     <script>
-        // --- Preloader Removal ---
-        // Explicitly wait for background image
-            const hidePreloader = () => {
-                const p = document.getElementById('preloader');
-                if(p) { p.classList.add('fade-out'); p.classList.add('hidden'); }
-            };
-            const bgImg = new Image();
-            bgImg.src = 'bg1.png';
-            bgImg.onload = hidePreloader;
-            bgImg.onerror = hidePreloader;
-            setTimeout(hidePreloader, 4000);if(preloader) {
-                preloader.classList.add('fade-out');
+        // --- Currency Handling ---
+        window.currentCurrency = 'INR';
+        window.exchangeRates = { INR: 1 };
+        
+        async function fetchExchangeRates() {
+            try {
+                const res = await fetch('https://api.exchangerate-api.com/v4/latest/INR');
+                const data = await res.json();
+                window.exchangeRates = data.rates;
+            } catch (e) {
+                console.error("Failed to fetch rates");
+                window.exchangeRates = {
+                    INR: 1, USD: 0.012, GBP: 0.0095, EUR: 0.011, CAD: 0.016, 
+                    AUD: 0.018, DKK: 0.082, AED: 0.044, SGD: 0.016, CNY: 0.086, 
+                    CHF: 0.011, SEK: 0.125
+                };
             }
-        });
+        }
+        fetchExchangeRates();
+
+        const currencySymbols = {
+            INR: '₹', USD: '$', GBP: '£', EUR: '€', CAD: 'CA$', AUD: 'AU$', 
+            DKK: 'kr.', AED: 'د.إ', SGD: 'S$', CNY: '¥', CHF: 'Fr.', SEK: 'kr'
+        };
+
+        const planPricesINR = { 'FREE': 0, 'CUBE': 99, 'CORE': 199, 'STAR': 1599 };
+
+        function updatePrices(currency) {
+            window.currentCurrency = currency;
+            const rate = window.exchangeRates[currency] || 1;
+            const symbol = currencySymbols[currency] || currency + ' ';
+
+            document.querySelectorAll('.plan-card').forEach(card => {
+                const planName = card.querySelector('.plan-name').textContent.trim();
+                const priceElement = card.querySelector('.plan-price');
+                const altPriceElement = card.querySelector('.plan-alt-price');
+                
+                if (planPricesINR[planName] !== undefined) {
+                    const priceInr = planPricesINR[planName];
+                    if (priceInr === 0) {
+                        priceElement.innerHTML = `${symbol}0<span>/mo</span>`;
+                    } else {
+                        const converted = (priceInr * rate).toFixed(2);
+                        priceElement.innerHTML = `${symbol}${converted}<span>/mo</span>`;
+                    }
+                    
+                    if (planName === 'CUBE' && altPriceElement) {
+                        const oneTimeConverted = (1599 * rate).toFixed(2);
+                        altPriceElement.textContent = `or ${symbol}${oneTimeConverted} one-time payment`;
+                    }
+                }
+            });
+        }
+
+        // --- Preloader Removal ---
+        const hidePreloader = () => {
+            const p = document.getElementById('preloader');
+            if(p) { p.classList.add('fade-out'); p.classList.add('hidden'); }
+        };
+        const bgImg = new Image();
+        bgImg.src = 'bg1.png';
+        bgImg.onload = hidePreloader;
+        bgImg.onerror = hidePreloader;
+        setTimeout(hidePreloader, 4000);
 
         // --- Firebase Config & Decryption Engine ---
         const firebaseConfig = {
@@ -334,8 +419,45 @@
         }
         fetchPlan();
 
-        // --- Razorpay Payment Integration ---
+        // --- Razorpay Payment & Bank Transfer Integration ---
         const RAZORPAY_KEY = "rzp_live_ShkXwNNmnUQfiF";
+        window.currentRazorpayOptions = null;
+        
+        const bankAccounts = {
+            'USD': { 'USD Account': '8307462053', 'ACH': '026073150' },
+            'GBP': { 'GBP Account': '49027028', 'FPS': '608382' },
+            'EUR': { 'EUR Account': 'DE78202208000049...', 'SEPA': 'SXPYDEHH' },
+            'CAD': { 'CAD Account': '998865547', 'EFT': '035210009' },
+            'AUD': { 'AUD Account': '049027029', 'NPP': '252000' },
+            'DKK': { 'DKK Account': 'DK9889000049027028', 'DKK SXPY': 'DKKK' }
+        };
+        const defaultSwift = { 'SWIFT Account': 'GB67TCCL041434121...', 'SWIFT': 'TCCLGB3L' };
+
+        function showBankModal(currency, amountFormatted) {
+            const detailsDiv = document.getElementById('bank-details');
+            const accounts = bankAccounts[currency] || defaultSwift;
+            
+            let html = `<div style="margin-bottom: 10px; color: var(--accent);">Amount Due: ${amountFormatted}</div>`;
+            for(const [label, val] of Object.entries(accounts)) {
+                html += `<div><strong style="color:#fff;">${label}:</strong> ${val}</div>`;
+            }
+            if (!bankAccounts[currency]) {
+                html += `<div style="margin-top: 10px; font-size: 0.9em; color: #aaa;">(Default SWIFT used for ${currency})</div>`;
+            }
+            
+            detailsDiv.innerHTML = html;
+            document.getElementById('bank-modal').style.display = 'flex';
+        }
+
+        function proceedWithRazorpay() {
+            if (!window.currentRazorpayOptions) return;
+            document.getElementById('bank-modal').style.display = 'none';
+            const rzp1 = new Razorpay(window.currentRazorpayOptions);
+            rzp1.on('payment.failed', function (response){
+                alert("Payment Failed: " + response.error.description);
+            });
+            rzp1.open();
+        }
 
         document.querySelectorAll('.pay-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
@@ -346,8 +468,6 @@
                 const amountPaise = this.getAttribute('data-amount');
                 const description = this.getAttribute('data-desc');
 
-                // If selecting FREE and it's not the current plan (e.g., downgrading)
-                // Note: The logic above already blocks this, but keeping as a fallback
                 if (planName === 'FREE') {
                     db.collection('users').doc(activeSession.uid).set({ plan: 'free', updatedAt: new Date().toISOString() }, { merge: true }).then(() => {
                         window.location.href = "account.html";
@@ -355,10 +475,20 @@
                     return;
                 }
 
-                const options = {
+                let finalAmount = parseInt(amountPaise, 10);
+                let displayAmount = "₹" + (finalAmount / 100);
+
+                if (window.currentCurrency && window.currentCurrency !== 'INR' && window.exchangeRates) {
+                    const baseInr = finalAmount / 100;
+                    const converted = baseInr * (window.exchangeRates[window.currentCurrency] || 1);
+                    finalAmount = Math.round(converted * 100);
+                    displayAmount = (currencySymbols[window.currentCurrency] || window.currentCurrency + ' ') + converted.toFixed(2);
+                }
+
+                window.currentRazorpayOptions = {
                     "key": RAZORPAY_KEY,
-                    "amount": amountPaise, 
-                    "currency": "INR",
+                    "amount": finalAmount, 
+                    "currency": window.currentCurrency || "INR",
                     "name": "Hikaru Labs",
                     "description": `Upgrade to ${planName} Plan`,
                     "image": "logo.png",
@@ -371,14 +501,11 @@
                     },
                     "handler": async function (response) {
                         try {
-                            // Payment successful. Update user document in Firestore.
                             await db.collection('users').doc(activeSession.uid).set({
                                 plan: planName,
                                 paymentId: response.razorpay_payment_id,
                                 updatedAt: new Date().toISOString()
                             }, { merge: true });
-
-                            // Redirect to thank you page
                             window.location.href = `success.html?plan=${planName}`;
                         } catch (error) {
                             console.error("Error updating DB:", error);
@@ -387,11 +514,11 @@
                     }
                 };
 
-                const rzp1 = new Razorpay(options);
-                rzp1.on('payment.failed', function (response){
-                    alert("Payment Failed: " + response.error.description);
-                });
-                rzp1.open();
+                if (window.currentCurrency && window.currentCurrency !== 'INR') {
+                    showBankModal(window.currentCurrency, displayAmount);
+                } else {
+                    proceedWithRazorpay();
+                }
             });
         });
 
