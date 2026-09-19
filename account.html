@@ -588,10 +588,7 @@
             bgImg.src = 'bg10.png';
             bgImg.onload = hidePreloader;
             bgImg.onerror = hidePreloader;
-            setTimeout(hidePreloader, 4000);if(preloader) {
-                preloader.classList.add('fade-out');
-            }
-        });
+            setTimeout(hidePreloader, 4000);
 
         // --- Firebase Initialization ---
         const firebaseConfig = {
